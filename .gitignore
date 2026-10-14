@@ -3,7 +3,7 @@
 .env.*
 !.env.example
 
-# Ejecuciones del bot en bruto (las buenas se copian a evidencias/)
+# Ejecuciones del bot en bruto (las buenas se copian a pitch/evidencias/)
 runs/
 
 # Python

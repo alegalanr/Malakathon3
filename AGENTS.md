@@ -1,46 +1,54 @@
 # Instrucciones para agentes
 
-Válidas para cualquier agente (Claude Code, Cursor, Codex, Copilot…). El contexto del proyecto y el mapa de ficheros están en [README.md](README.md): léelo primero.
+## Proyecto
 
-## Antes de empezar
+Hackathon (reto de Betsson). Construimos un bot que entra en la web de Betsson, detecta un juego nuevo en el lobby, lo abre, juega una ronda en el canvas, hace capturas y da un veredicto PASS/FAIL con su motivo. Somos varias personas trabajando en paralelo, cada una con su agente.
 
-- Lee [ESTADO.md](ESTADO.md) para no duplicar trabajo y saber quién lleva qué.
-- Haz `git pull` de `main` y crea una rama `<persona>/<tarea-corta>`.
-- Para algo de la web de Betsson, mira primero [docs/web-betsson.md](docs/web-betsson.md). Para el diseño del bot, [docs/diseno.md](docs/diseno.md).
+- [ESTADO.md](ESTADO.md): qué funciona y quién está con cada parte.
+- [docs/diseno.md](docs/diseno.md): etapas, módulos, formato de `run.json` y decisiones tomadas.
+- [docs/web-betsson.md](docs/web-betsson.md): lo que sabemos de la web.
+- [docs/reto.md](docs/reto.md): el enunciado.
+- `pitch/`: material de la presentación. No lo toques salvo que la tarea sea el pitch.
 
-## Al terminar una tarea (obligatorio)
+## Flujo de trabajo
 
-Una tarea no está terminada hasta que está reportada:
+**Al empezar una tarea:**
 
-1. Actualiza la fila correspondiente en `ESTADO.md`: estado, responsable, enfoque y evidencia. ✅ solo si hay evidencia (captura, `run.json` o comando ejecutado).
-2. Si has aprendido algo de la web, añádelo a `docs/web-betsson.md`.
-3. Si has elegido entre alternativas, añade una fila a la tabla de decisiones de `docs/diseno.md`.
-4. Abre el PR a `main` siguiendo `.github/pull_request_template.md`. Esa descripción **es el informe**, y de ahí sale el pitch.
-5. Pide confirmación a la persona antes de hacer push o crear el PR.
+1. `git switch main && git pull`.
+2. Comprueba en `ESTADO.md` y con `gh pr list` que nadie está ya con esa parte. Si alguien lo está, díselo a la persona y no sigas.
+3. Crea una rama `<persona>/<parte>-<tarea>`, por ejemplo `marta/launch-iframe`.
+4. En tu sección de `ESTADO.md` pon 🟡 y tu nombre. Haz commit, push y `gh pr create --draft` con el título `<parte>: <tarea>`. Con el PR abierto, el resto ve en qué estás.
 
-Al reportar:
+**Mientras trabajas:**
 
-- Separa lo **comprobado** (lo has ejecutado) de lo **supuesto**. Nunca digas que algo funciona sin haberlo ejecutado.
-- Sé breve. Una persona tiene que leerlo en 20 segundos.
+- Commits pequeños y push a menudo.
+- Toca solo los ficheros de tu parte. Si necesitas cambiar algo compartido (formato de `run.json`, orquestador, dependencias, Docker), hazlo en un PR pequeño aparte y fusiónalo cuanto antes, para que el resto lo reciba enseguida.
+
+**Al terminar:**
+
+1. Actualiza tu sección de `ESTADO.md`: estado, cómo se ha hecho y evidencia. ✅ solo si lo has ejecutado y hay evidencia (captura, `run.json`, salida de un comando).
+2. Si has aprendido algo de la web, añádelo a `docs/web-betsson.md`. Si has elegido entre alternativas, añade una fila a la tabla de decisiones de `docs/diseno.md`.
+3. Actualiza la rama con `git merge origin/main` (no rebase, para no tener que forzar el push). Resuelve los conflictos y comprueba que sigue funcionando.
+4. Rellena la descripción del PR siguiendo la plantilla y ejecuta `gh pr ready`.
+5. Confirma con la persona y fusiona: `gh pr merge --squash --delete-branch`.
 
 ## Idioma
 
 - En español: todo lo que lee una persona (docs, PRs, commits, comentarios en el código, mensajes y logs del bot).
 - En inglés: solo el código en sí (nombres de variables, funciones, módulos y ficheros de código).
-- Commits cortos: `lobby: detectar juegos nuevos con la API`.
-- Sin `Co-Authored-By` ni firmas de agente ("Generated with…") en commits ni PRs.
+- Sin `Co-Authored-By` ni firmas de agente en commits ni PRs.
 
-## Reglas que no se rompen
+## Nunca
 
-- **Nada de dinero real.** Solo modo demo o el entorno que dé la organización. Si un juego exige apostar dinero real, para y repórtalo como bloqueo.
-- **Nada de credenciales** en código, prompts, logs ni capturas. Las de prueba van en `.env`, que no se sube. No leas ni imprimas su contenido.
-- **No te saltes CAPTCHAs ni protecciones anti-bot.** Si aparece una, apúntala en `docs/web-betsson.md` y avisa al equipo.
-- No machaques la web: esperas razonables y nada de peticiones en paralelo masivas.
-- Tapa los datos personales de las capturas antes de copiarlas a `evidencias/`.
+- **Jugar con dinero real.** Solo modo demo o el entorno que dé la organización. Si un juego exige apostar dinero real, para y avisa.
+- **Poner credenciales** en código, prompts, logs o capturas. Las de prueba van en `.env`, que no se sube.
+- **Saltarte CAPTCHAs o protecciones anti-bot.** Si aparece una, apúntala en `docs/web-betsson.md` y avisa.
+- **Decir que algo funciona sin haberlo ejecutado.**
 
-## Convenciones técnicas
+## Técnico
 
-- Todo se ejecuta en **Docker**: no se instala nada en el host. El comando para ejecutarlo va en el README.
-- Antes que un LLM, código determinista (selectores, API del lobby). El modelo con visión solo se usa dentro del canvas y para el veredicto.
-- Cada ejecución del bot escribe `runs/<run_id>/` (no se sube) con el formato de `docs/diseno.md`. Ese formato lo comparten todas las etapas: si lo cambias, avisa en el PR.
+- Todo se ejecuta en Docker; no se instala nada en el host.
+- Un módulo por etapa (ver `docs/diseno.md`). Cada etapa tiene que poder ejecutarse sola con una entrada fija, para que nadie dependa de que funcionen las anteriores.
+- Antes que IA, código determinista (selectores, API del lobby, tráfico de red). La IA con visión solo se usa donde no hay más remedio.
+- Cada ejecución escribe `runs/<run_id>/` con el formato de `docs/diseno.md`; esa carpeta no se sube.
 - No subas ficheros de más de 2 MB.
