@@ -1,55 +1,74 @@
 # Diseño del bot
 
-> Es una **propuesta**: la confirmamos o la cambiamos cuando sepamos más de la web (ver [web-betsson.md](web-betsson.md)).
+> Es una **propuesta**: se confirma o se cambia cuando sepamos más de la web (ver [web-betsson.md](web-betsson.md)).
 
 ## Idea general
 
-El bot es una cadena de **6 etapas independientes**. Cada una hace su parte, guarda sus capturas y dice si ha ido bien. Esto tiene dos ventajas: cada persona puede trabajar en una etapa sin pisar a las demás y, cuando algo falla, se sabe en qué etapa.
-
-Donde la web tiene HTML usamos automatización normal (Playwright), que es rápida, gratis y fiable. Dentro del juego solo hay un canvas sin elementos que seleccionar, así que ahí usamos un **modelo de IA con visión**: mira la captura y dice dónde hacer clic. También ayuda a dar el veredicto.
+El bot es una cadena de **5 etapas independientes**. Cada etapa es un módulo separado, lo lleva una persona, se puede ejecutar sola y guarda sus propias capturas. Esto permite trabajar en paralelo sin pisarse y, si algo falla, saber en qué etapa ha sido.
 
 ```mermaid
 flowchart LR
     A[1. Entrar] --> B[2. Detectar<br/>juego nuevo]
     B --> C[3. Abrir<br/>el juego]
-    C --> D[4. Jugar<br/>IA con visión]
-    D --> E[5. Capturas]
-    E --> F[6. Veredicto]
-    F --> G[(run.json)]
+    C --> D[4. Jugar<br/>una ronda]
+    D --> E[5. Veredicto]
+    E --> F[(run.json<br/>+ capturas)]
 ```
 
-| # | Etapa | Cómo | Plan B |
-|---|---|---|---|
-| 1 | Entrar | Playwright abre la web y cierra las cookies | — |
-| 2 | Detectar juego nuevo | Leer la API del lobby y comparar con la vez anterior, o buscar la etiqueta "New" | Leer las tarjetas del HTML |
-| 3 | Abrir el juego | Clic en el juego y esperar a que aparezca el canvas | Ir directamente a la URL del juego |
-| 4 | Jugar | Captura → la IA dice dónde está el botón de jugar → clic → esperar | Posición fija del botón según el proveedor |
-| 5 | Capturas | Una antes y otra después de cada etapa; vídeo opcional | — |
-| 6 | Veredicto | Reglas objetivas primero; la IA solo explica o desempata | Solo reglas |
+| # | Etapa | Plan A | Plan B | Se ejecuta sola con… |
+|---|---|---|---|---|
+| 1 | Entrar | Playwright abre la web y cierra el banner de cookies | — | la URL |
+| 2 | Detectar juego nuevo | Señal del propio lobby: etiqueta "New" o categoría de novedades | Comparar la lista de juegos (mejor si sale de la API del lobby) con una foto guardada en el repo | la URL del lobby |
+| 3 | Abrir el juego | Clic en el juego y esperar a que el canvas esté visible | Ir directamente a la URL del juego | la URL o el id de un juego |
+| 4 | Jugar una ronda | Lanzar el spin con el teclado (muchos juegos usan Espacio) | IA con visión: localiza el botón en una captura y se hace clic en esas coordenadas | la URL del juego ya abierto |
+| 5 | Veredicto | Reglas sobre lo que han registrado las etapas anteriores | La IA explica el resultado o desempata | una carpeta `runs/<run_id>/` |
+
+Lo que todavía no está comprobado: que haya modo demo sin login, que Espacio lance el spin y cómo se comunica el juego con su servidor. Eso lo confirmará la exploración de la web.
 
 ## Cuándo es PASS
 
-Todo esto tiene que cumplirse:
+Una tragaperras se mueve aunque nadie la toque, porque tiene animaciones constantes. Por eso **comparar capturas no demuestra que la jugada haya funcionado**. La prueba fiable está en el tráfico de red:
 
-1. El juego carga: se ve el canvas, no está en blanco y no hay pantalla de error.
-2. La jugada cambia algo: la captura de después es claramente distinta de la de antes.
-3. La ronda termina: el juego vuelve a estar quieto o cambia el saldo.
-4. No hay errores graves en la consola ni fallos de servidor.
+1. **El juego carga:** el canvas es visible, no hay pantalla de error y las peticiones al proveedor no fallan (sin 4xx ni 5xx).
+2. **La jugada llega al servidor:** al lanzar el spin sale una petición (HTTP o WebSocket) hacia el proveedor y vuelve una respuesta válida.
+3. **La ronda se resuelve:** la respuesta trae el resultado o el saldo cambia (en la respuesta o en pantalla).
+4. **No hay errores graves** en la consola.
 
-Si falta algo, es **FAIL**, siempre con el motivo y la etapa donde falló.
+Las capturas de antes y después se guardan como **prueba visual**, pero no deciden el veredicto. Si falla cualquier punto, es **FAIL**, con el motivo y la etapa donde falló.
+
+Para la demo conviene enseñar también un **FAIL provocado**: si se bloquea el dominio del proveedor con `page.route`, el juego no carga y el bot tiene que detectarlo.
+
+## Módulos
+
+Propuesta, pendiente de confirmar al elegir el stack:
+
+```
+bot/
+├── stages/
+│   ├── enter.py      # etapa 1
+│   ├── detect.py     # etapa 2
+│   ├── launch.py     # etapa 3
+│   ├── play.py       # etapa 4
+│   └── verdict.py    # etapa 5
+├── run.py            # orquestador: encadena las etapas    ← compartido
+└── evidence.py       # capturas, traza y run.json           ← compartido
+```
+
+Cada etapa es de quien la lleva. Los ficheros marcados como **compartido** se cambian en PRs pequeños y aparte, que se fusionan enseguida.
 
 ## Qué deja cada ejecución
 
-Cada ejecución crea una carpeta `runs/<run_id>/` (no se sube a git). Las mejores se copian a `evidencias/` para la demo. **Todas las etapas escriben con este formato**: si alguien lo cambia, lo avisa en el PR.
+Cada ejecución crea `runs/<run_id>/`, que no se sube a git. Las mejores se copian a `pitch/evidencias/`.
 
 ```
 runs/20261015T103200Z-a1b2/
 ├── run.json
+├── trace.zip        # traza de Playwright: cada acción con su captura y su tráfico de red
 ├── 01_entrar.png
 ├── 02_lobby.png
-├── 03_juego_cargado.png
-├── 04a_antes_jugada.png
-└── 04b_despues_jugada.png
+├── 03_juego.png
+├── 04a_antes.png
+└── 04b_despues.png
 ```
 
 ```json
@@ -60,20 +79,31 @@ runs/20261015T103200Z-a1b2/
   "url": "https://...",
   "game": { "id": "...", "name": "...", "provider": "...", "why_new": "Tiene la etiqueta New" },
   "steps": [
-    { "name": "navigate", "status": "pass", "duration_ms": 2310, "screenshots": ["01_entrar.png"], "notes": "Cookies rechazadas" }
+    { "name": "enter", "status": "pass", "duration_ms": 2310, "screenshots": ["01_entrar.png"], "notes": "Cookies rechazadas" }
   ],
-  "verdict": { "result": "PASS", "failed_step": null, "reason": "Carga, la jugada cambia el canvas y la ronda termina", "decided_by": "rules" },
-  "ai_usage": { "calls": 3, "usd": 0.02 }
+  "verdict": {
+    "result": "PASS",
+    "failed_step": null,
+    "reason": "Carga, el spin recibe respuesta del servidor y cambia el saldo",
+    "checks": { "loaded": true, "spin_request": true, "round_resolved": true, "console_errors": 0 }
+  },
+  "ai_usage": { "calls": 0, "usd": 0.0 }
 }
 ```
 
-Los nombres de los campos van en inglés porque los usa el código, pero los textos que lee una persona (`reason`, `notes`, `why_new`) van en español. `duration_ms` y `ai_usage` están ahí para el pitch: con ellos podemos decir cuánto tarda y cuánto cuesta validar un juego.
+- `steps[].status` puede ser `pass`, `fail` o `skipped`.
+- `verdict.result` puede ser `PASS` o `FAIL`.
+- Los nombres de los campos van en inglés porque los usa el código. Los textos que lee una persona (`reason`, `notes`, `why_new`) van en español.
+- Este formato lo comparten todas las etapas: cambiarlo es un cambio compartido.
+
+Para abrir la traza: `npx playwright show-trace runs/<run_id>/trace.zip`, o arrastrar el fichero a trace.playwright.dev.
 
 ## Decisiones tomadas
 
 Se añade una fila cada vez que elegimos entre varias opciones.
 
-| Fecha | Decisión | Por qué | Descartado | Estado |
-|---|---|---|---|---|
-| 14/10 | Automatización normal donde hay HTML y IA con visión solo dentro del canvas | Fiable y barato donde se puede, flexible donde hace falta | IA que lo hace todo (lenta, cara, arriesgada en directo); solo posiciones fijas (no sirve para juegos nuevos) | Propuesta |
-| 14/10 | Python + Playwright dentro de Docker | Lo conocemos y Playwright gestiona bien los iframes y las capturas | — | Propuesta |
+| Fecha | Decisión | Por qué | Descartado |
+|---|---|---|---|
+| 14/10 | Automatización determinista donde se pueda; IA con visión solo como plan B dentro del canvas | Es fiable, barata y rápida en directo | Un agente de IA que lo haga todo (lento, caro e impredecible en una demo) |
+| 14/10 | Veredicto basado en el tráfico de red, con las capturas como prueba visual | Las tragaperras se animan solas, así que comparar píxeles daría falsos PASS | Diferencia de píxeles como criterio principal |
+| 14/10 | Python + Playwright en Docker (propuesta) | Gestiona bien iframes, red, capturas y trazas | — |

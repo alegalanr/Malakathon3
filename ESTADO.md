@@ -1,25 +1,63 @@
 # Estado
 
-Qué funciona ahora mismo. Cada uno actualiza su fila al cerrar una tarea.
+Qué funciona y quién está con cada parte. Cada agente actualiza **solo su sección**.
 
 ⬜ sin empezar · 🟡 en curso · ✅ funciona (con evidencia) · ❌ bloqueado
 
-| Etapa | Estado | Quién | Cómo lo estamos haciendo | Evidencia |
-|---|---|---|---|---|
-| Explorar la web | 🟡 | | A mano, ver [web-betsson.md](docs/web-betsson.md) | |
-| 1. Entrar en Betsson | ⬜ | | | |
-| 2. Detectar juego nuevo | ⬜ | | | |
-| 3. Abrir el juego | ⬜ | | | |
-| 4. Jugar (canvas) | ⬜ | | | |
-| 5. Capturas | ⬜ | | | |
-| 6. Veredicto PASS/FAIL | ⬜ | | | |
-| Todo junto (end-to-end) | ⬜ | | | |
-| Pitch y demo | ⬜ | | | |
+<!-- Va en secciones y no en una tabla a propósito: si dos PRs cambian filas contiguas de una tabla, git da conflicto; si cambian secciones distintas, no. -->
 
-## Bloqueos
+## Explorar la web
 
-- Ninguno por ahora.
+- **Estado:** 🟡
+- **Quién:**
+- **Cómo:** a mano; los hallazgos van en [docs/web-betsson.md](docs/web-betsson.md)
+- **Evidencia:**
 
-## Mejor run hasta ahora
+## 1. Entrar en Betsson
 
-- Ninguno todavía. Aquí va el enlace al run que enseñaremos en la demo.
+- **Estado:** ⬜
+- **Quién:**
+- **Cómo:**
+- **Evidencia:**
+
+## 2. Detectar juego nuevo
+
+- **Estado:** ⬜
+- **Quién:**
+- **Cómo:**
+- **Evidencia:**
+
+## 3. Abrir el juego
+
+- **Estado:** ⬜
+- **Quién:**
+- **Cómo:**
+- **Evidencia:**
+
+## 4. Jugar una ronda
+
+- **Estado:** ⬜
+- **Quién:**
+- **Cómo:**
+- **Evidencia:**
+
+## 5. Veredicto PASS/FAIL
+
+- **Estado:** ⬜
+- **Quién:**
+- **Cómo:**
+- **Evidencia:**
+
+## Orquestador (todo junto) y Docker
+
+- **Estado:** ⬜
+- **Quién:**
+- **Cómo:**
+- **Evidencia:**
+
+## Pitch
+
+- **Estado:** ⬜
+- **Quién:**
+- **Cómo:** en [pitch/](pitch/)
+- **Evidencia:**
