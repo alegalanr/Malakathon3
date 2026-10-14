@@ -1,4 +1,6 @@
 <!doctype html><html><body style="margin:0;background:#000"><canvas id="c" width="960" height="600"></canvas><script>
+// Tragaperras simulada: carga → pantalla de inicio (CONTINUE) → lista → spin → resultado.
+// Acepta ratón y tecla Espacio. Cada spin pide api/spin.json al "servidor".
 const c=document.getElementById('c'),x=c.getContext('2d');let st='loading',bal=1000,reels=[1,2,3];
 function draw(){x.fillStyle='#103';x.fillRect(0,0,960,600);x.fillStyle='#fff';x.font='28px sans-serif';
  if(st==='loading'){x.fillText('Loading...',400,300);return}
@@ -7,10 +9,14 @@ function draw(){x.fillStyle='#103';x.fillRect(0,0,960,600);x.fillStyle='#fff';x.
  x.fillStyle='#fff';x.fillText('BALANCE: '+bal,40,560);
  x.fillStyle=st==='spinning'?'#555':'#d80';x.beginPath();x.arc(860,520,55,0,7);x.fill();x.fillStyle='#000';x.fillText('SPIN',825,530);
  if(st==='result'){x.fillStyle='#fff';x.fillText('YOU WIN 20!',380,440)}}
+function spin(){st='spinning';bal-=10;draw();
+ fetch('api/spin.json?bet=10').then(r=>r.json()).then(res=>{let n=0;const t=setInterval(()=>{
+  reels=reels.map(()=>Math.floor(Math.random()*5));draw();
+  if(++n>15){clearInterval(t);bal+=res.win;st='result';draw()}},120)}).catch(()=>{st='error';draw()})}
+function act(){if(st==='splash'){st='ready';draw()}else if(st==='ready'||st==='result'){spin()}}
 setTimeout(()=>{st='splash';draw()},2000);draw();
 c.addEventListener('click',e=>{const r=c.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;
- if(st==='splash'&&px>380&&px<580&&py>260&&py<330){st='ready';draw()}
- else if((st==='ready'||st==='result')&&Math.hypot(px-860,py-520)<55){st='spinning';bal-=10;draw();
-  fetch('api/spin',{method:'POST',body:JSON.stringify({bet:10})}).catch(()=>{});
-  let n=0;const t=setInterval(()=>{reels=reels.map(()=>Math.floor(Math.random()*5));draw();if(++n>15){clearInterval(t);bal+=20;st='result';draw()}},120)}});
+ if(st==='splash'&&px>380&&px<580&&py>260&&py<330)act();
+ else if((st==='ready'||st==='result')&&Math.hypot(px-860,py-520)<55)act()});
+window.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();act()}});
 </script></body></html>

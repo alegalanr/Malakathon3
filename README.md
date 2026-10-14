@@ -24,11 +24,13 @@ Con Docker Desktop abierto, desde la carpeta del repo:
 
 ```bash
 docker compose build
-docker compose run --rm bot --check                                   # comprueba el entorno
-docker compose run --rm bot --site mock --game "Neon Dragon" --no-ai  # ensayo con el casino simulado
+docker compose run --rm bot --check                     # comprueba el entorno
+docker compose run --rm bot                             # flujo completo contra el casino simulado
+docker compose run --rm bot --block "**/provider.html"  # FAIL provocado: el juego no carga
+docker compose run --rm bot --url https://...           # contra otra web
 ```
 
-Detalle en [docs/arquitectura-esqueleto.md](docs/arquitectura-esqueleto.md#5-bis-ejecución-con-docker-recomendada-por-el-equipo).
+El resultado queda en `runs/<run_id>/` (`run.json`, capturas, traza y `report.html`). Más opciones y cómo ejecutar cada etapa por separado: [docs/arquitectura-esqueleto.md](docs/arquitectura-esqueleto.md).
 
 ## Documentación
 
@@ -38,6 +40,6 @@ Detalle en [docs/arquitectura-esqueleto.md](docs/arquitectura-esqueleto.md#5-bis
 | [docs/reto.md](docs/reto.md)               | Enunciado y preguntas para la organización     |
 | [docs/web-betsson.md](docs/web-betsson.md) | Lo que sabemos de la web de Betsson            |
 | [docs/diseno.md](docs/diseno.md)           | Etapas, módulos, formato de salida, decisiones |
-| [docs/arquitectura-esqueleto.md](docs/arquitectura-esqueleto.md) | Esqueleto de código actual: módulos, contratos de datos, Docker, contingencias |
+| [docs/arquitectura-esqueleto.md](docs/arquitectura-esqueleto.md) | Cómo está hecho el código y cómo ejecutar cada etapa |
 | [pitch/](pitch/)                           | Presentación                                   |
 | [CONTRIBUTING.md](CONTRIBUTING.md)         | Cómo trabajamos en el repo                     |
