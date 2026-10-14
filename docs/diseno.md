@@ -4,7 +4,7 @@
 
 ## Idea general
 
-El bot es una cadena de **5 etapas independientes**. Cada etapa es un módulo separado, lo lleva una persona, se puede ejecutar sola y guarda sus propias capturas. Esto permite trabajar en paralelo sin pisarse y, si algo falla, saber en qué etapa ha sido.
+El bot es una cadena de **5 etapas independientes**. Cada etapa es un módulo separado, lo lleva una persona, se puede ejecutar sola y guarda sus propias capturas.
 
 ```mermaid
 flowchart LR
@@ -15,19 +15,19 @@ flowchart LR
     E --> F[(run.json<br/>+ capturas)]
 ```
 
-| # | Etapa | Plan A | Plan B | Se ejecuta sola con… |
-|---|---|---|---|---|
-| 1 | Entrar | Playwright abre la web y cierra el banner de cookies | — | la URL |
-| 2 | Detectar juego nuevo | Señal del propio lobby: etiqueta "New" o categoría de novedades | Comparar la lista de juegos (mejor si sale de la API del lobby) con una foto guardada en el repo | la URL del lobby |
-| 3 | Abrir el juego | Clic en el juego y esperar a que el canvas esté visible | Ir directamente a la URL del juego | la URL o el id de un juego |
-| 4 | Jugar una ronda | Lanzar el spin con el teclado (muchos juegos usan Espacio) | IA con visión: localiza el botón en una captura y se hace clic en esas coordenadas | la URL del juego ya abierto |
-| 5 | Veredicto | Reglas sobre lo que han registrado las etapas anteriores | La IA explica el resultado o desempata | una carpeta `runs/<run_id>/` |
+| # | Etapa                | Plan A                                                          | Plan B                                                                                           | Se ejecuta sola con…         |
+|---|----------------------|-----------------------------------------------------------------|--------------------------------------------------------------------------------------------------|------------------------------|
+| 1 | Entrar               | Playwright abre la web y cierra el banner de cookies            | —                                                                                                | la URL                       |
+| 2 | Detectar juego nuevo | Señal del propio lobby: etiqueta "New" o categoría de novedades | Comparar la lista de juegos (mejor si sale de la API del lobby) con una foto guardada en el repo | la URL del lobby             |
+| 3 | Abrir el juego       | Clic en el juego y esperar a que el canvas esté visible         | Ir directamente a la URL del juego                                                               | la URL o el id de un juego   |
+| 4 | Jugar una ronda      | Lanzar el spin con el teclado (muchos juegos usan Espacio)      | IA con visión: localiza el botón en una captura y se hace clic en esas coordenadas               | la URL del juego ya abierto  |
+| 5 | Veredicto            | Reglas sobre lo que han registrado las etapas anteriores        | La IA explica el resultado o desempata                                                           | una carpeta `runs/<run_id>/` |
 
 Lo que todavía no está comprobado: que haya modo demo sin login, que Espacio lance el spin y cómo se comunica el juego con su servidor. Eso lo confirmará la exploración de la web.
 
 ## Cuándo es PASS
 
-Una tragaperras se mueve aunque nadie la toque, porque tiene animaciones constantes. Por eso **comparar capturas no demuestra que la jugada haya funcionado**. La prueba fiable está en el tráfico de red:
+Las tragaperras se animan solas, así que **comparar capturas no demuestra que la jugada haya funcionado**. La prueba fiable está en el tráfico de red:
 
 1. **El juego carga:** el canvas es visible, no hay pantalla de error y las peticiones al proveedor no fallan (sin 4xx ni 5xx).
 2. **La jugada llega al servidor:** al lanzar el spin sale una petición (HTTP o WebSocket) hacia el proveedor y vuelve una respuesta válida.
@@ -39,8 +39,6 @@ Las capturas de antes y después se guardan como **prueba visual**, pero no deci
 Para la demo conviene enseñar también un **FAIL provocado**: si se bloquea el dominio del proveedor con `page.route`, el juego no carga y el bot tiene que detectarlo.
 
 ## Módulos
-
-Propuesta, pendiente de confirmar al elegir el stack:
 
 ```
 bot/
@@ -93,17 +91,15 @@ runs/20261015T103200Z-a1b2/
 
 - `steps[].status` puede ser `pass`, `fail` o `skipped`.
 - `verdict.result` puede ser `PASS` o `FAIL`.
-- Los nombres de los campos van en inglés porque los usa el código. Los textos que lee una persona (`reason`, `notes`, `why_new`) van en español.
+- Los textos para personas (`reason`, `notes`, `why_new`) van en español.
 - Este formato lo comparten todas las etapas: cambiarlo es un cambio compartido.
 
 Para abrir la traza: `npx playwright show-trace runs/<run_id>/trace.zip`, o arrastrar el fichero a trace.playwright.dev.
 
 ## Decisiones tomadas
 
-Se añade una fila cada vez que elegimos entre varias opciones.
-
-| Fecha | Decisión | Por qué | Descartado |
-|---|---|---|---|
-| 14/10 | Automatización determinista donde se pueda; IA con visión solo como plan B dentro del canvas | Es fiable, barata y rápida en directo | Un agente de IA que lo haga todo (lento, caro e impredecible en una demo) |
-| 14/10 | Veredicto basado en el tráfico de red, con las capturas como prueba visual | Las tragaperras se animan solas, así que comparar píxeles daría falsos PASS | Diferencia de píxeles como criterio principal |
-| 14/10 | Python + Playwright en Docker (propuesta) | Gestiona bien iframes, red, capturas y trazas | — |
+| Fecha | Decisión                                                                                     | Por qué                                                                     | Descartado                                                                |
+|-------|----------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------|---------------------------------------------------------------------------|
+| 14/10 | Automatización determinista donde se pueda; IA con visión solo como plan B dentro del canvas | Es fiable, barata y rápida en directo                                       | Un agente de IA que lo haga todo (lento, caro e impredecible en una demo) |
+| 14/10 | Veredicto basado en el tráfico de red, con las capturas como prueba visual                   | Las tragaperras se animan solas, así que comparar píxeles daría falsos PASS | Diferencia de píxeles como criterio principal                             |
+| 14/10 | Python + Playwright en Docker (propuesta)                                                    | Gestiona bien iframes, red, capturas y trazas                               | —                                                                         |
