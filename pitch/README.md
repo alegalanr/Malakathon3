@@ -1,19 +1,17 @@
 # Pitch
 
-Carpeta de trabajo de quien prepara la presentación. Aquí va lo que necesite: borrador, guion, diapositivas, imágenes y `evidencias/`. El resto del equipo no tiene que tocar nada de esta carpeta.
+Carpeta de quien prepara la presentación: borrador, guion, diapositivas, imágenes y `evidencias/`.
 
 ## De dónde sacar el material
 
-No hace falta preguntar a nadie, porque todo sale del trabajo normal del equipo:
-
-| Qué | Dónde |
-|---|---|
-| Qué funciona | [ESTADO.md](../ESTADO.md) |
-| Cómo funciona y por qué se decidió así | [docs/diseno.md](../docs/diseno.md) |
+| Qué                                     | Dónde                                                                                  |
+|-----------------------------------------|----------------------------------------------------------------------------------------|
+| Qué funciona                            | [ESTADO.md](../ESTADO.md)                                                              |
+| Cómo funciona y por qué se decidió así  | [docs/diseno.md](../docs/diseno.md)                                                    |
 | Cómo ha ido el día y qué problemas hubo | [PRs fusionados](https://github.com/alegalanr/Malakathon3/pulls?q=is%3Apr+is%3Amerged) |
-| Capturas, trazas y números | `runs/` de cualquier ejecución y `evidencias/` |
+| Capturas, trazas y números              | `runs/` de cualquier ejecución y `evidencias/`                                         |
 
-Con Claude Code, `/pitch` lo lee todo y deja un resumen en `pitch/material.md`. Se puede lanzar tantas veces como haga falta.
+Con Claude Code, `/pitch` lo lee todo y deja un resumen en `pitch/material.md`.
 
 ## Estructura sugerida
 

@@ -17,18 +17,18 @@ Hackathon (reto de Betsson). Construimos un bot que entra en la web de Betsson, 
 1. `git switch main && git pull`.
 2. Comprueba en `ESTADO.md` y con `gh pr list` que nadie está ya con esa parte. Si alguien lo está, díselo a la persona y no sigas.
 3. Crea una rama `<persona>/<parte>-<tarea>`, por ejemplo `marta/launch-iframe`.
-4. En tu sección de `ESTADO.md` pon 🟡 y tu nombre. Haz commit, push y `gh pr create --draft` con el título `<parte>: <tarea>`. Con el PR abierto, el resto ve en qué estás.
+4. En tu sección de `ESTADO.md` pon 🟡 y tu nombre. Haz commit, push y `gh pr create --draft` con el título `<parte>: <tarea>`.
 
 **Mientras trabajas:**
 
 - Commits pequeños y push a menudo.
-- Toca solo los ficheros de tu parte. Si necesitas cambiar algo compartido (formato de `run.json`, orquestador, dependencias, Docker), hazlo en un PR pequeño aparte y fusiónalo cuanto antes, para que el resto lo reciba enseguida.
+- Toca solo los ficheros de tu parte. Si necesitas cambiar algo compartido (formato de `run.json`, orquestador, dependencias, Docker), hazlo en un PR pequeño aparte y fusiónalo cuanto antes.
 
 **Al terminar:**
 
 1. Actualiza tu sección de `ESTADO.md`: estado, cómo se ha hecho y evidencia. ✅ solo si lo has ejecutado y hay evidencia (captura, `run.json`, salida de un comando).
 2. Si has aprendido algo de la web, añádelo a `docs/web-betsson.md`. Si has elegido entre alternativas, añade una fila a la tabla de decisiones de `docs/diseno.md`.
-3. Actualiza la rama con `git merge origin/main` (no rebase, para no tener que forzar el push). Resuelve los conflictos y comprueba que sigue funcionando.
+3. Actualiza la rama con `git merge origin/main` (no rebase: evita forzar el push). Resuelve los conflictos y comprueba que sigue funcionando.
 4. Rellena la descripción del PR siguiendo la plantilla y ejecuta `gh pr ready`.
 5. Confirma con la persona y fusiona: `gh pr merge --squash --delete-branch`.
 
