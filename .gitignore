@@ -32,3 +32,11 @@ playwright/.cache/
 # Sistema y varios
 .DS_Store
 *.log
+
+# Salidas del esqueleto de la rama julia (se conserva la carpeta con .gitkeep)
+auth/*
+!auth/.gitkeep
+screenshots/*
+!screenshots/.gitkeep
+reports/*
+!reports/.gitkeep

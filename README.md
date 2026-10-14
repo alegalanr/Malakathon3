@@ -20,7 +20,15 @@ Cada ejecución deja en `runs/<run_id>/` un `run.json` con el resultado, las cap
 
 ## Ejecutar
 
-TODO: comando con Docker.
+Con Docker Desktop abierto, desde la carpeta del repo:
+
+```bash
+docker compose build
+docker compose run --rm bot --check                                   # comprueba el entorno
+docker compose run --rm bot --site mock --game "Neon Dragon" --no-ai  # ensayo con el casino simulado
+```
+
+Detalle en [docs/arquitectura-esqueleto.md](docs/arquitectura-esqueleto.md#5-bis-ejecución-con-docker-recomendada-por-el-equipo).
 
 ## Documentación
 
@@ -30,5 +38,6 @@ TODO: comando con Docker.
 | [docs/reto.md](docs/reto.md)               | Enunciado y preguntas para la organización     |
 | [docs/web-betsson.md](docs/web-betsson.md) | Lo que sabemos de la web de Betsson            |
 | [docs/diseno.md](docs/diseno.md)           | Etapas, módulos, formato de salida, decisiones |
+| [docs/arquitectura-esqueleto.md](docs/arquitectura-esqueleto.md) | Esqueleto de código actual: módulos, contratos de datos, Docker, contingencias |
 | [pitch/](pitch/)                           | Presentación                                   |
 | [CONTRIBUTING.md](CONTRIBUTING.md)         | Cómo trabajamos en el repo                     |

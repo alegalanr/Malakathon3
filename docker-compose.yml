@@ -1,0 +1,31 @@
+# Uso:
+#   docker compose build
+#   docker compose run --rm bot --check
+#   docker compose run --rm bot --site mock --game "Neon Dragon" --no-ai
+#   docker compose down
+services:
+  # Casino simulado (mock_casino/) servido por HTTP para ensayar sin la web real
+  mock:
+    build: .
+    entrypoint: ["python", "-m", "http.server", "8000", "--directory", "/app/mock_casino"]
+    command: []
+
+  bot:
+    build: .
+    depends_on:
+      - mock
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Prevalecen sobre lo que haya en .env: dentro de Docker no hay pantalla ni Chrome
+      HEADLESS: "true"
+      BROWSER_CHANNEL: ""
+      MOCK_BASE_URL: "http://mock:8000"
+    shm_size: "1gb"   # Chromium necesita más memoria compartida que la de serie
+    volumes:
+      # Las salidas quedan en tu carpeta, fuera del contenedor
+      - ./reports:/app/reports
+      - ./screenshots:/app/screenshots
+      - ./auth:/app/auth
+    command: ["--site", "mock", "--game", "Neon Dragon"]

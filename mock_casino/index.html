@@ -1,0 +1,14 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Mock Casino Lobby</title>
+<style>body{font-family:sans-serif;background:#111;color:#eee}.grid{display:grid;grid-template-columns:repeat(4,200px);gap:16px}
+.game-tile{background:#222;border-radius:10px;padding:10px;cursor:pointer}.game-tile img{width:180px;height:120px;background:#444}
+#cookie{position:fixed;bottom:0;left:0;right:0;background:#333;padding:20px}</style></head><body>
+<h1>Casino (mock)</h1><input type="search" placeholder="Search games" id="q">
+<div class="grid" id="grid"></div>
+<div id="cookie">Usamos cookies <button id="onetrust-accept-btn-handler" onclick="cookie.remove()">Accept all</button></div>
+<script>
+const games=["Starburst","Book of Dead","Gonzo's Quest","Mega Moolah","Sweet Bonanza","Neon Dragon (NEW)"];
+const img="data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="180" height="120"><rect width="180" height="120" fill="#a33"/></svg>');
+function render(f=""){grid.innerHTML=games.filter(g=>g.toLowerCase().includes(f.toLowerCase())).map(g=>
+ `<div class="game-tile" data-test-id="game-tile" onclick="location.href='game.html?g=${encodeURIComponent(g)}'"><img src="${img}" alt="${g}"><div>${g}</div></div>`).join("")}
+render();q.addEventListener("keydown",e=>e.key==="Enter"&&render(q.value));
+</script></body></html>
