@@ -226,6 +226,9 @@ como `SKIPPED` y se genera igualmente el reporte.
 ├── reports/                      # ./reports/<run_id>/{report.html,result.json,trace.zip,video/,run.log}
 ├── auth/                         # ./auth/storage_state.json (sesión guardada, NO versionar)
 ├── .env.example                  # plantilla de variables de entorno
+├── Dockerfile                    # imagen del bot (base oficial de Playwright con Chromium)
+├── docker-compose.yml            # servicios: mock (casino simulado) + bot
+├── .dockerignore                 # lo que no entra en la imagen (.env, .git, salidas…)
 ├── .gitignore
 ├── main.py                       # orquestador + CLI
 ├── requirements.txt
@@ -758,6 +761,25 @@ $env:BROWSER_CHANNEL=""; $env:GAME_AGENT_MAX_STEPS="20"; python main.py --game "
 ```
 
 ---
+
+### 5 bis. Ejecución con Docker (recomendada por el equipo)
+
+Requisito: Docker Desktop arrancado. No hace falta instalar Python ni navegadores en el host: la imagen
+parte de `mcr.microsoft.com/playwright/python:v1.56.0-noble`, que ya trae Chromium.
+
+```powershell
+docker compose build                                            # construye la imagen (la primera vez tarda)
+docker compose run --rm bot --check                             # self-test dentro del contenedor
+docker compose run --rm bot --site mock --game "Neon Dragon" --no-ai   # ensayo con el casino simulado
+docker compose run --rm bot --site mock --game "Neon Dragon"           # igual, con IA (requiere .env)
+docker compose down                                             # para el casino simulado
+```
+
+- `docker-compose.yml` levanta dos servicios: `mock` (sirve `mock_casino/` en `http://mock:8000`) y `bot`.
+- Dentro del contenedor siempre es **headless** y con el Chromium de Playwright; esas variables prevalecen sobre `.env`.
+- `.env` es opcional y se lee si existe (API keys). No se copia a la imagen (`.dockerignore`).
+- `reports/`, `screenshots/` y `auth/` se montan como volúmenes: los resultados aparecen en tu carpeta.
+- `--save-session` (login manual) **no** funciona dentro de Docker porque no hay pantalla: hazlo fuera con el entorno virtual.
 
 ### 6. Plan de contingencia y gestión de edge cases
 

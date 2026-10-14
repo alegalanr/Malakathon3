@@ -72,7 +72,9 @@ SITES: dict[str, SiteConfig] = {
                               locale="en-GB"),
     "betsson_es": SiteConfig(key="betsson_es", base_url="https://www.betsson.es", lobby_path="/casino"),
     # Casino simulado local para ensayos offline: python -m http.server 8000 --directory mock_casino
-    "mock": SiteConfig(key="mock", base_url="http://localhost:8000", lobby_path="/index.html"),
+    # En Docker, MOCK_BASE_URL=http://mock:8000 (nombre del servicio en docker-compose.yml)
+    "mock": SiteConfig(key="mock", base_url=os.getenv("MOCK_BASE_URL", "http://localhost:8000"),
+                       lobby_path="/index.html"),
 }
 
 DEFAULT_SITE = os.getenv("SITE", "betsson_com")
