@@ -4,7 +4,7 @@
 
 TODO: pegar aquí el enunciado oficial tal cual, con los criterios de evaluación.
 
-Mientras tanto, esto es lo que sabemos:
+Resumen provisional:
 
 > Construir un bot/agente capaz de navegar a la web de Betsson, buscar/detectar un nuevo juego en el lobby, iniciarlo, realizar una jugada (interactuar con el canvas/juego), tomar capturas como evidencia y dar un veredicto (Pass/Fail) de forma automatizada.
 
@@ -19,8 +19,6 @@ Para nuestra demo, haberlo conseguido significa:
 - Si el juego no carga o no responde, sale FAIL. Si podemos, lo enseñamos con un caso que falle.
 
 ## Preguntas para la organización
-
-Cuando tengamos la respuesta, apuntarla al lado de la pregunta.
 
 - [ ] ¿Qué web usamos: betsson.com, .es o un entorno de pruebas?
 - [ ] ¿Hace falta login para jugar en modo demo? ¿Nos dan una cuenta de prueba?

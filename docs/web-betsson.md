@@ -35,5 +35,5 @@ Todo lo que sabemos de la web. Junto a cada dato, pon cómo lo sabes (una captur
 ## Juegos probados
 
 | Juego | Proveedor | ¿Demo sin login? | ¿Carga? | Notas |
-|---|---|---|---|---|
-| | | | | |
+|-------|-----------|------------------|---------|-------|
+|       |           |                  |         |       |
