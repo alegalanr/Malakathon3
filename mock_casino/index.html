@@ -1,14 +1,22 @@
-<!doctype html><html><head><meta charset="utf-8"><title>Mock Casino Lobby</title>
-<style>body{font-family:sans-serif;background:#111;color:#eee}.grid{display:grid;grid-template-columns:repeat(4,200px);gap:16px}
-.game-tile{background:#222;border-radius:10px;padding:10px;cursor:pointer}.game-tile img{width:180px;height:120px;background:#444}
-#cookie{position:fixed;bottom:0;left:0;right:0;background:#333;padding:20px}</style></head><body>
-<h1>Casino (mock)</h1><input type="search" placeholder="Search games" id="q">
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Casino simulado</title>
+<style>body{font-family:sans-serif;background:#111;color:#eee;margin:20px}
+.grid{display:grid;grid-template-columns:repeat(4,200px);gap:16px;margin-top:16px}
+.game-tile{display:block;position:relative;background:#222;border-radius:10px;padding:10px;color:#eee;text-decoration:none}
+.game-tile img{width:180px;height:120px;display:block}
+.badge{position:absolute;top:14px;left:14px;background:#e11;color:#fff;font-size:12px;font-weight:700;padding:2px 6px;border-radius:4px}
+#cookies{position:fixed;bottom:0;left:0;right:0;background:#333;padding:20px}</style></head><body>
+<h1>Casino simulado</h1>
+<p>Lobby de prueba para ensayar el bot sin la web real. "Neon Dragon" es el juego nuevo.</p>
+<input type="search" placeholder="Buscar juegos" id="q">
 <div class="grid" id="grid"></div>
-<div id="cookie">Usamos cookies <button id="onetrust-accept-btn-handler" onclick="cookie.remove()">Accept all</button></div>
+<div id="cookies">Usamos cookies.
+  <button id="onetrust-reject-all-handler" onclick="cookies.remove()">Rechazar todo</button>
+  <button id="onetrust-accept-btn-handler" onclick="cookies.remove()">Aceptar todo</button></div>
 <script>
-const games=["Starburst","Book of Dead","Gonzo's Quest","Mega Moolah","Sweet Bonanza","Neon Dragon (NEW)"];
+const games=[["Starburst",0],["Book of Dead",0],["Gonzo's Quest",0],["Mega Moolah",0],["Sweet Bonanza",0],["Neon Dragon",1]];
 const img="data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="180" height="120"><rect width="180" height="120" fill="#a33"/></svg>');
-function render(f=""){grid.innerHTML=games.filter(g=>g.toLowerCase().includes(f.toLowerCase())).map(g=>
- `<div class="game-tile" data-test-id="game-tile" onclick="location.href='game.html?g=${encodeURIComponent(g)}'"><img src="${img}" alt="${g}"><div>${g}</div></div>`).join("")}
+function render(f=""){grid.innerHTML=games.filter(([g])=>g.toLowerCase().includes(f.toLowerCase())).map(([g,isNew])=>
+ `<a class="game-tile" data-test-id="game-tile" data-provider="Proveedor Simulado" href="game.html?g=${encodeURIComponent(g)}">`+
+ (isNew?'<span class="badge">New</span>':'')+`<img src="${img}" alt="${g}"><div>${g}</div></a>`).join("")}
 render();q.addEventListener("keydown",e=>e.key==="Enter"&&render(q.value));
 </script></body></html>

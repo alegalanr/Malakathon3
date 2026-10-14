@@ -1,10 +1,12 @@
-# Uso:
+# Uso (desde la raíz del repo):
 #   docker compose build
-#   docker compose run --rm bot --check
-#   docker compose run --rm bot --site mock --game "Neon Dragon" --no-ai
-#   docker compose down
+#   docker compose run --rm bot --check                     # comprobar el entorno
+#   docker compose run --rm bot                             # flujo completo contra el casino simulado
+#   docker compose run --rm bot --url https://...           # flujo completo contra otra web
+#   docker compose run --rm bot --block "**/provider.html"  # FAIL provocado (demo)
+#   docker compose down                                     # parar el casino simulado
 services:
-  # Casino simulado (mock_casino/) servido por HTTP para ensayar sin la web real
+  # Casino simulado (mock_casino/) servido por HTTP en http://mock:8000
   mock:
     build: .
     entrypoint: ["python", "-m", "http.server", "8000", "--directory", "/app/mock_casino"]
@@ -18,14 +20,13 @@ services:
       - path: .env
         required: false
     environment:
-      # Prevalecen sobre lo que haya en .env: dentro de Docker no hay pantalla ni Chrome
+      # Prevalecen sobre .env: dentro de Docker no hay pantalla ni Chrome instalado
       HEADLESS: "true"
       BROWSER_CHANNEL: ""
-      MOCK_BASE_URL: "http://mock:8000"
+      # Por defecto, el casino simulado. Para otra web: docker compose run --rm bot --url https://...
+      LOBBY_URL: "http://mock:8000/index.html"
     shm_size: "1gb"   # Chromium necesita más memoria compartida que la de serie
     volumes:
-      # Las salidas quedan en tu carpeta, fuera del contenedor
-      - ./reports:/app/reports
-      - ./screenshots:/app/screenshots
-      - ./auth:/app/auth
-    command: ["--site", "mock", "--game", "Neon Dragon"]
+      - ./runs:/app/runs            # resultados de cada ejecución
+      - ./auth:/app/auth            # sesión guardada (si hace falta login)
+      - ./bot/data:/app/bot/data    # foto del lobby (plan B de la etapa 2)

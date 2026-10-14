@@ -33,10 +33,6 @@ playwright/.cache/
 .DS_Store
 *.log
 
-# Salidas del esqueleto de la rama julia (se conserva la carpeta con .gitkeep)
+# Sesión guardada del navegador (puede contener cookies de login)
 auth/*
 !auth/.gitkeep
-screenshots/*
-!screenshots/.gitkeep
-reports/*
-!reports/.gitkeep
