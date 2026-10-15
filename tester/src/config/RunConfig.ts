@@ -1,13 +1,17 @@
 /**
  * F0: markets.json + entorno → RunConfig (C1), validado antes de abrir el navegador.
  */
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import fs from 'node:fs';
 import path from 'node:path';
 import { RunConfig, type MarketId, type Scenario } from '../contracts/schemas';
 import { eurosToCents } from '../domain/Money';
 
 const FILE = path.join(__dirname, '..', '..', 'config', 'markets.json');
+
+// Credenciales fuera de Docker: tester/.env y, si no, el .env de la raíz del repo (dotenv no pisa lo ya definido)
+dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
+dotenv.config({ path: path.join(__dirname, '..', '..', '..', '.env') });
 
 export class ConfigError extends Error {}
 
