@@ -19,34 +19,51 @@ export function centsValue(v: unknown): Cents | undefined {
   return typeof n === 'number' && Number.isFinite(n) ? Math.round(n) : undefined;
 }
 
+/** Confusiones típicas del OCR (O→0, l/I→1, S→5, B→8…), solo dentro de tramos que ya tienen dígitos. */
+const DIGIT_FIXES: Record<string, string> = { O: '0', o: '0', D: '0', Q: '0', l: '1', I: '1', '|': '1', i: '1', Z: '2', z: '2', S: '5', s: '5', B: '8', g: '9' };
+export function fixDigitConfusions(text: string): string {
+  return text.replace(/[0-9OoDQlIi|ZzSsBg.,]+/g, (run) => (/[0-9]/.test(run) ? run.replace(/[OoDQlIi|ZzSsBg]/g, (c) => DIGIT_FIXES[c] ?? c) : run));
+}
+
 /**
  * Texto leído en pantalla ("4,00 €", "€4.00", "S/ 2.80", "1.234,56") → céntimos, según el mercado.
- * Si el texto trae un único separador seguido de 2 dígitos, se toma como decimal aunque no coincida
- * con el del mercado (el juego puede formatear distinto que la web); el informe enseña el texto en bruto.
+ * El OCR confunde "," y ".", así que se decide por la forma y no por el carácter:
+ *  - separador final + 2 dígitos → céntimos (los miles siempre van de 3 en 3);
+ *  - separador final + 3 dígitos → miles, salvo que sea el separador decimal del mercado (ambiguo → null);
+ *  - sin separador → euros enteros; con `alwaysDecimals` (el juego siempre pinta 2 decimales) → null,
+ *    porque "280 €" casi seguro es "2,80 €" con la coma sin leer.
+ * Ante cualquier duda devuelve null en vez de adivinar: el OCR es testigo, no juez.
  */
 export function parseDisplayedAmount(text: string, fmt: NumberFormat): Cents | null {
-  const s = text.replace(/[^\d.,]/g, '');
-  if (!/\d/.test(s)) return null;
-  const lastSep = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'));
-  let intPart = s;
-  let decPart = '';
-  if (lastSep >= 0) {
-    const tail = s.slice(lastSep + 1);
-    const sep = s[lastSep];
-    if (tail.length === 2 || (sep === fmt.decimal && tail.length <= 2)) {
-      intPart = s.slice(0, lastSep);
-      decPart = tail;
+  const body = text
+    .replace(/S\s*\//g, ' ') // símbolo de soles (la S no es un 5)
+    .replace(/(\d)\s*E\s*$/, '$1'); // € leído como E
+  const tokens = fixDigitConfusions(body).match(/\d(?:[\d.,]*\d)?/g) ?? [];
+  if (tokens.length !== 1) return null; // ningún número, o varios (ambiguo)
+  const tok = tokens[0];
+  const lastSep = Math.max(tok.lastIndexOf(','), tok.lastIndexOf('.'));
+  let intStr = tok;
+  let decStr = '00';
+  if (lastSep === -1) {
+    if (fmt.alwaysDecimals) return null;
+  } else {
+    const tail = tok.slice(lastSep + 1);
+    if (tail.length === 2) {
+      intStr = tok.slice(0, lastSep);
+      decStr = tail;
+    } else if (!(tail.length === 3 && tok[lastSep] !== fmt.decimal && !fmt.alwaysDecimals)) {
+      return null;
     }
   }
-  intPart = intPart.replace(/[.,]/g, '');
-  if (intPart === '' && decPart === '') return null;
-  const cents = Number(intPart || '0') * 100 + Number((decPart + '00').slice(0, 2));
-  return Number.isFinite(cents) ? cents : null;
+  const groups = intStr.split(/[.,]/);
+  if (groups.length > 1 && (groups[0].length > 3 || groups.slice(1).some((g) => g.length !== 3))) return null;
+  const cents = Number(groups.join('')) * 100 + Number(decStr);
+  return Number.isSafeInteger(cents) ? cents : null;
 }
 
 export function currencySymbolIn(text: string): string | undefined {
   if (/S\s*\//.test(text)) return 'S/';
-  if (/€/.test(text)) return '€';
+  if (/€/.test(text) || /\d\s*E\s*$/.test(text)) return '€'; // el OCR a veces lee € como E
   if (/EUR/i.test(text)) return '€';
   if (/PEN/i.test(text)) return 'S/';
   return undefined;

@@ -8,7 +8,7 @@
     "timezone": "Europe/Madrid",
     "currency": "EUR",
     "currencySymbol": "€",
-    "numberFormat": { "decimal": ",", "thousands": "." },
+    "numberFormat": { "decimal": ",", "thousands": ".", "alwaysDecimals": true },
     "texts": {
       "insufficientBalance": ["saldo insuficiente", "fondos insuficientes", "sin fondos", "insuficiente", "no tienes suficiente"]
     },

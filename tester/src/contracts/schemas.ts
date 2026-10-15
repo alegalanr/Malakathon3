@@ -30,7 +30,12 @@ export const RunConfig = z.object({
   timezone: z.string(),
   currency: Currency,
   currencySymbol: z.string(),
-  numberFormat: z.object({ decimal: z.enum([',', '.']), thousands: z.enum([',', '.', ' ', '']) }),
+  numberFormat: z.object({
+    decimal: z.enum([',', '.']),
+    thousands: z.enum([',', '.', ' ', '']),
+    // El juego pinta siempre 2 decimales ("1,00 €"): un importe sin separador es una mala lectura
+    alwaysDecimals: z.boolean().optional(),
+  }),
   texts: z.object({ insufficientBalance: z.array(z.string()).min(1) }),
   game: z.object({ provider: z.literal('pragmatic'), name: z.string(), search: z.string(), path: z.string() }),
   maxBet: Cents,

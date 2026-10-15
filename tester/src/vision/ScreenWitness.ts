@@ -1,6 +1,12 @@
 /**
  * F8: testigo visual. OCR dirigido sobre la captura liquidada o de rechazo (SOLUCION.md §3.5, C11 → C12).
  * El OCR es testigo, no juez: lee 2-3 recortes pequeños y nunca lanza excepción.
+ *
+ * Consenso en rid y apuesta: un valor solo se acepta cuando DOS lecturas con preprocesados distintos
+ * coinciden. Una lectura suelta puede confundir un 4 con un 2 con confianza alta (comprobado con
+ * tesseract.js sobre un juego sintético); dos variantes casi nunca fallan igual. Si no hay acuerdo,
+ * el valor es null con el motivo, y el check visual da FAIL "testigo visual no legible" en vez de
+ * comparar con un número inventado. La apuesta leída en F5 decide si se gira con dinero real.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,7 +14,9 @@ import sharp from 'sharp';
 import type { Roi, RunConfig, VisualField, VisualReading } from '../contracts/schemas';
 import { currencySymbolIn, parseDisplayedAmount } from '../domain/Money';
 import type { OcrEngine } from './OcrEngine';
+import { cropRel, preprocess, VARIANTS } from './preprocess';
 import { locateRois, MESSAGE_ROI } from './RoiLocator';
+import { containsFuzzy, normalizeText } from './textMatch';
 
 export interface WitnessRequest {
   capture: { png: Buffer; t: number; triggerEvent: string };
@@ -23,7 +31,9 @@ const OTHER_LANG_WORDS: Record<'es' | 'en', string[]> = {
   es: ['insuficiente', 'saldo', 'fondos', 'no tienes', 'suficiente', 'deposita'],
   en: ['insufficient', 'not enough', 'funds', 'balance', 'deposit'],
 };
-const normText = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+const RECAPTURE_DELAY_MS = 500;
+/** Dígitos mínimos para dar por leído un rid (los de Pragmatic tienen 9 o más). */
+const MIN_RID_DIGITS = 6;
 
 /** Corrige confusiones típicas solo dentro de la parte numérica (O→0, l/I→1, S→5, B→8). */
 export function normalizeRid(raw: string): string {
@@ -31,14 +41,41 @@ export function normalizeRid(raw: string): string {
   return after.replace(/[Oo]/g, '0').replace(/[lI|]/g, '1').replace(/S/g, '5').replace(/B/g, '8').replace(/\D/g, '');
 }
 
+/**
+ * Idioma del aviso. Comparación difusa ("sald0 insuficlente" vale), pero una palabra del mercado no
+ * cuenta si lo leído se parece igual o más a una del otro idioma ("insufficient" ≈ "insuficiente").
+ */
 export function detectLanguage(text: string, cfg: RunConfig): { language?: 'es' | 'en'; hits: string[]; foreign: string[] } {
-  const t = normText(text);
-  const mine = cfg.texts.insufficientBalance.map(normText).filter((k) => t.includes(k));
   const otherLang = cfg.language === 'es' ? 'en' : 'es';
-  const foreign = OTHER_LANG_WORDS[otherLang].map(normText).filter((k) => t.includes(k) && !OTHER_LANG_WORDS[cfg.language].map(normText).includes(k));
-  if (mine.length && !foreign.length) return { language: cfg.language, hits: mine, foreign };
-  if (foreign.length) return { language: otherLang, hits: mine, foreign };
-  return { hits: mine, foreign };
+  const own = OTHER_LANG_WORDS[cfg.language].map(normalizeText);
+  const otherWords = OTHER_LANG_WORDS[otherLang].map(normalizeText).filter((k) => !own.includes(k));
+  const foreign = otherWords.filter((k) => containsFuzzy(text, k, 0.9).found);
+  const hits = cfg.texts.insufficientBalance.filter((k) => {
+    const m = containsFuzzy(text, k, 0.8);
+    if (!m.found || !m.match) return false;
+    const otherScore = Math.max(0, ...otherWords.map((o) => containsFuzzy(m.match!, o, 0).score));
+    return m.score > otherScore;
+  });
+  if (hits.length && !foreign.length) return { language: cfg.language, hits, foreign };
+  if (foreign.length) return { language: otherLang, hits, foreign };
+  return { hits, foreign };
+}
+
+interface Attempt {
+  raw: string;
+  value: string | number | null;
+  confidence: number;
+  currencySymbol?: string;
+  language?: 'es' | 'en';
+  reason?: string;
+  valid: boolean;
+  crop: Buffer;
+}
+
+interface ReadState {
+  png: Buffer;
+  recaptured: boolean;
+  attempts: number;
 }
 
 export class ScreenWitness {
@@ -50,107 +87,176 @@ export class ScreenWitness {
   async read(req: WitnessRequest): Promise<{ readings: VisualReading[]; locatedRois: { rid?: Roi; bet?: Roi } }> {
     const readings: VisualReading[] = [];
     const locatedRois: { rid?: Roi; bet?: Roi } = {};
+    const state: ReadState = { png: req.capture.png, recaptured: false, attempts: 0 };
     for (const field of req.fields) {
+      state.attempts = 0;
       try {
-        const r = await this.readField(field, req, locatedRois);
-        readings.push(r);
+        readings.push(await this.readField(field, req, locatedRois, state));
       } catch (e) {
-        readings.push(await this.failed(field, req.capture.png, null, `error del testigo: ${(e as Error).message}`, 0));
+        readings.push(await this.failed(field, req, state.png, null, `error del testigo: ${(e as Error).message}`, Math.max(1, state.attempts)));
       }
     }
     return { readings, locatedRois };
   }
 
-  private async readField(field: VisualField, req: WitnessRequest, located: { rid?: Roi; bet?: Roi }): Promise<VisualReading> {
-    const cfg = req.config;
-    if (!this.ocr.ready) return this.failed(field, req.capture.png, null, 'testigo no disponible (OCR sin cargar)', 0);
+  private async readField(field: VisualField, req: WitnessRequest, located: { rid?: Roi; bet?: Roi }, state: ReadState): Promise<VisualReading> {
+    if (!this.ocr.ready) return this.failed(field, req, state.png, null, 'testigo no disponible (OCR sin cargar)', 1);
 
-    let candidates: Roi[] = [];
-    if (field === 'message') candidates = [MESSAGE_ROI];
-    else if (req.rois[field]) candidates = [req.rois[field]!];
+    let candidates: Roi[] = field === 'message' ? [MESSAGE_ROI] : req.rois[field] ? [req.rois[field]!] : [];
     let relocated = false;
+    let best: { reading: VisualReading; score: number } | null = null;
 
-    let png = req.capture.png;
-    let best: VisualReading | null = null;
-    let attempts = 0;
-    for (let attempt = 1; attempt <= cfg.ocr.maxAttempts; attempt++) {
-      if (!candidates.length && !relocated) {
-        const found = await locateRois(this.ocr, png, cfg);
+    for (;;) {
+      if (!candidates.length && !relocated && field !== 'message') {
+        const found = await locateRois(this.ocr, state.png, req.config);
         relocated = true;
-        candidates = field === 'rid' ? (found.rid ? [found.rid] : []) : field === 'bet' ? (found.bet ?? []) : candidates;
+        candidates = field === 'rid' ? (found.rid ? [found.rid] : []) : (found.bet ?? []);
       }
-      if (!candidates.length) return this.failed(field, png, null, 'zona no localizada (ancla no encontrada)', attempt);
-      if (attempt === 3 && req.recapture) {
-        await new Promise((r) => setTimeout(r, 500));
-        png = (await req.recapture()) ?? png;
+      if (!candidates.length) {
+        return best?.reading ?? this.failed(field, req, state.png, null, 'zona no localizada (ancla no encontrada)', Math.max(1, state.attempts));
       }
       for (const roi of candidates) {
-        attempts++;
-        const variant = attempt === 2 ? 'x4' : 'x3';
-        const crop = await this.crop(png, roi, variant);
-        const res = await this.ocr.recognize(crop.processed, {
-          mode: field === 'message' ? 'block' : 'line',
-          whitelist: field === 'rid' ? '#0123456789' : field === 'bet' ? '0123456789.,€S/ ' : undefined,
-        });
-        const reading = this.interpret(field, res.text, res.confidence, roi, cfg);
-        const cropPath = this.saveCrop(field, crop.raw);
-        const full: VisualReading = { ...reading, cropPath, attempts };
-        if (!best || (full.value !== null && (best.value === null || full.confidence > best.confidence))) best = full;
-        if (full.value !== null && full.confidence >= cfg.ocr.minConfidence) {
+        const { accepted, reading, score } = await this.readRoi(field, roi, req, state);
+        if (accepted) {
           if (field !== 'message') located[field] = roi;
-          return full;
+          return reading;
         }
+        if (!best || score > best.score) best = { reading, score };
       }
-      // Si la zona guardada ya no contiene el ancla, se vuelve a buscar
+      // La zona guardada ya no da una lectura válida (otro tamaño, otra versión del juego): se vuelve a buscar
       if (!relocated && field !== 'message') {
         candidates = [];
+        continue;
       }
+      return best!.reading;
     }
-    return best ?? this.failed(field, png, null, 'lectura vacía tras los reintentos', attempts);
   }
 
-  private interpret(field: VisualField, raw: string, confidence: number, roi: Roi, cfg: RunConfig): Omit<VisualReading, 'cropPath' | 'attempts'> {
-    const text = raw.replace(/\s+/g, ' ').trim();
+  /** Lee una zona con varias variantes. rid/apuesta: consenso de 2. Mensaje: la primera con palabras clave. */
+  private async readRoi(field: VisualField, roi: Roi, req: WitnessRequest, state: ReadState): Promise<{ accepted: boolean; reading: VisualReading; score: number }> {
+    const cfg = req.config;
+    const attempts: Attempt[] = [];
+    for (let i = 0; i < cfg.ocr.maxAttempts; i++) {
+      // Si tras dos intentos no hay ninguna lectura válida (p. ej. el contador aún se mueve), se recaptura una vez
+      if (i === 2 && req.recapture && !state.recaptured && !attempts.some((a) => a.valid)) {
+        await new Promise((r) => setTimeout(r, RECAPTURE_DELAY_MS));
+        const again = await req.recapture().catch(() => null);
+        if (again) state.png = again;
+        state.recaptured = true;
+      }
+      state.attempts++;
+      const variant = VARIANTS[i % VARIANTS.length];
+      const { raw: crop } = await cropRel(state.png, roi);
+      const res = await this.ocr.recognize(await preprocess(crop, variant), {
+        mode: field === 'message' ? 'block' : 'line',
+        // Sin espacio en la lista: con espacio, tesseract.js devuelve confianza 0
+        whitelist: field === 'rid' ? '#0123456789' : field === 'bet' ? '0123456789.,€S/' : undefined,
+      });
+      const a = this.interpret(field, res.text, res.confidence, cfg, crop);
+      attempts.push(a);
+      if (field === 'message' && a.valid) break;
+      if (field !== 'message' && winner(attempts)) break;
+    }
+
+    const base = { field, roi, attempts: Math.max(1, state.attempts) };
+    if (field === 'message') {
+      const pick = attempts.find((a) => a.valid) ?? [...attempts].sort((a, b) => b.confidence - a.confidence || b.raw.length - a.raw.length)[0];
+      const reading: VisualReading = {
+        ...base,
+        raw: pick.raw,
+        value: pick.value,
+        confidence: pick.confidence,
+        language: pick.language,
+        reason: pick.reason,
+        cropPath: this.saveCrop(field, req, pick.crop),
+      };
+      return { accepted: pick.valid, reading, score: pick.valid ? 2 : pick.value ? 1 : 0 };
+    }
+
+    const win = winner(attempts);
+    if (win) {
+      const reading: VisualReading = {
+        ...base,
+        raw: win[0].raw,
+        value: win[0].value,
+        confidence: win.reduce((s, a) => s + a.confidence, 0) / win.length,
+        currencySymbol: win.find((a) => a.currencySymbol)?.currencySymbol,
+        cropPath: this.saveCrop(field, req, win[0].crop),
+      };
+      return { accepted: true, reading, score: 3 };
+    }
+    const valid = attempts.filter((a) => a.valid);
+    const distinct = [...new Set(valid.map((a) => String(a.value)))];
+    const pick = valid[0] ?? [...attempts].sort((a, b) => b.confidence - a.confidence)[0];
+    const reason =
+      distinct.length > 1
+        ? `las lecturas no coinciden (${distinct.join(' / ')})`
+        : valid.length === 1
+          ? 'solo una lectura válida, sin una segunda que la confirme'
+          : pick.value !== null
+            ? `confianza ${pick.confidence.toFixed(2)} < ${cfg.ocr.minConfidence}`
+            : (pick.reason ?? 'sin lectura');
+    const reading: VisualReading = {
+      ...base,
+      raw: pick.raw,
+      value: null,
+      confidence: pick.confidence,
+      currencySymbol: pick.currencySymbol,
+      reason,
+      cropPath: this.saveCrop(field, req, pick.crop),
+    };
+    return { accepted: false, reading, score: valid.length ? 2 : pick.raw ? 1 : 0 };
+  }
+
+  private interpret(field: VisualField, rawText: string, confidence: number, cfg: RunConfig, crop: Buffer): Attempt {
+    const raw = rawText.replace(/\s+/g, ' ').trim();
+    const ok = confidence >= cfg.ocr.minConfidence;
+    if (!raw) return { raw, value: null, confidence, reason: 'lectura vacía', valid: false, crop };
     if (field === 'rid') {
-      const digits = normalizeRid(text);
-      return { field, raw: text, value: digits.length >= 4 ? digits : null, confidence, roi, reason: digits.length >= 4 ? undefined : 'sin dígitos de ronda' };
+      const digits = normalizeRid(raw);
+      return digits.length >= MIN_RID_DIGITS
+        ? { raw, value: digits, confidence, valid: ok, crop }
+        : { raw, value: null, confidence, reason: 'sin dígitos de ronda', valid: false, crop };
     }
     if (field === 'bet') {
-      const cents = parseDisplayedAmount(text, cfg.numberFormat);
-      return { field, raw: text, value: cents, currencySymbol: currencySymbolIn(text), confidence, roi, reason: cents === null ? 'sin importe legible' : undefined };
+      const cents = parseDisplayedAmount(raw, cfg.numberFormat);
+      const currencySymbol = currencySymbolIn(raw);
+      return cents === null
+        ? { raw, value: null, confidence, currencySymbol, reason: 'sin importe legible (o ambiguo)', valid: false, crop }
+        : { raw, value: cents, confidence, currencySymbol, valid: ok, crop };
     }
-    const lang = detectLanguage(text, cfg);
-    return { field, raw: text, value: text ? normText(text) : null, confidence, roi, language: lang.language, reason: text ? undefined : 'sin texto' };
+    const lang = detectLanguage(raw, cfg);
+    const known = lang.hits.length > 0 || lang.foreign.length > 0;
+    return {
+      raw,
+      value: normalizeText(raw),
+      confidence,
+      language: lang.language,
+      reason: known ? undefined : 'no aparece ninguna palabra conocida del aviso',
+      valid: ok && known,
+      crop,
+    };
   }
 
-  private async crop(png: Buffer, roi: Roi, variant: 'x3' | 'x4') {
-    const meta = await sharp(png).metadata();
-    const W = meta.width!;
-    const H = meta.height!;
-    const left = Math.max(0, Math.floor(roi.rx * W));
-    const top = Math.max(0, Math.floor(roi.ry * H));
-    const width = Math.max(4, Math.min(W - left, Math.ceil(roi.rw * W)));
-    const height = Math.max(4, Math.min(H - top, Math.ceil(roi.rh * H)));
-    const raw = await sharp(png).extract({ left, top, width, height }).png().toBuffer();
-    const gray = sharp(raw).grayscale();
-    const { dominant } = await gray.clone().stats();
-    // Texto claro sobre fondo oscuro (lo habitual en las barras de los juegos) → invertir en el 1.er intento
-    const dark = dominant.r < 110;
-    let pipe = sharp(raw).grayscale().resize({ width: width * (variant === 'x4' ? 4 : 3) });
-    if (dark && variant === 'x3') pipe = pipe.negate({ alpha: false });
-    const processed = await pipe.normalize().threshold(150).png().toBuffer();
-    return { raw, processed };
-  }
-
-  private saveCrop(field: VisualField, png: Buffer): string {
-    const rel = `evidence/crop-${field}.png`;
+  /** Un recorte por campo y momento (reposo, liquidada, rechazo): no se pisan entre F5 y F8. */
+  private saveCrop(field: VisualField, req: WitnessRequest, png: Buffer): string {
+    const tag = req.capture.triggerEvent.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'captura';
+    const rel = `evidence/crop-${field}-${tag}.png`;
+    fs.mkdirSync(path.join(this.dir, 'evidence'), { recursive: true });
     fs.writeFileSync(path.join(this.dir, rel), png);
     return rel;
   }
 
-  private async failed(field: VisualField, png: Buffer, roi: Roi | null, reason: string, attempts: number): Promise<VisualReading> {
+  private async failed(field: VisualField, req: WitnessRequest, png: Buffer, roi: Roi | null, reason: string, attempts: number): Promise<VisualReading> {
     // cropPath siempre existe: si no hay zona, se guarda el recuadro entero para enseñar qué se vio
     const small = await sharp(png).resize({ width: 640, withoutEnlargement: true }).png().toBuffer().catch(() => png);
-    return { field, raw: '', value: null, confidence: 0, roi, cropPath: this.saveCrop(field, small), attempts, reason };
+    return { field, raw: '', value: null, confidence: 0, roi, cropPath: this.saveCrop(field, req, small), attempts, reason };
   }
+}
+
+/** Valor con al menos dos lecturas válidas iguales (devuelve esas lecturas), o null. */
+function winner(attempts: Attempt[]): Attempt[] | null {
+  const groups = new Map<string, Attempt[]>();
+  for (const a of attempts) if (a.valid) groups.set(String(a.value), [...(groups.get(String(a.value)) ?? []), a]);
+  return [...groups.values()].find((g) => g.length >= 2) ?? null;
 }
