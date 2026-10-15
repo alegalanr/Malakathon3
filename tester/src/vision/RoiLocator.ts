@@ -38,7 +38,9 @@ export async function locateRois(ocr: OcrEngine, gamePng: Buffer, cfg: RunConfig
   const out: LocatedRois = {};
 
   const betAnchors = cfg.ocr.anchors.bet.map(norm);
-  const bet = words.find((w) => betAnchors.some((a) => norm(w.text).startsWith(a)));
+  // Palabra completa («APUESTA», «APUESTA:», «BET0,20»), no cualquiera que empiece igual («BETTER»)
+  const isAnchor = (t: string, a: string) => t.startsWith(a) && !/^[A-Z]/.test(t.slice(a.length));
+  const bet = words.find((w) => betAnchors.some((a) => isAnchor(norm(w.text), a)));
   if (bet) {
     const b = toAbs(bet);
     const aw = b.x1 - b.x0;

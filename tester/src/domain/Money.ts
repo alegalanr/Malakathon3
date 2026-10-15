@@ -44,6 +44,14 @@ export function parseDisplayedAmount(text: string, fmt: NumberFormat): Cents | n
   return Number.isFinite(cents) ? cents : null;
 }
 
+export const SYMBOL_TO_CODE: Record<string, string> = { '€': 'EUR', 'S/': 'PEN' };
+
+/** El juego puede dar la moneda como símbolo («€») y la cartera como código («EUR»): se compara siempre el código. */
+export function currencyCode(c: string): string {
+  const t = c.trim();
+  return SYMBOL_TO_CODE[t] ?? t.toUpperCase();
+}
+
 export function currencySymbolIn(text: string): string | undefined {
   if (/S\s*\//.test(text)) return 'S/';
   if (/€/.test(text)) return '€';

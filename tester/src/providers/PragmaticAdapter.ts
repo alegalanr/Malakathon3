@@ -4,7 +4,7 @@
  * updateBalance viene en céntimos y el resto en euros.
  */
 import type { EventType, StandardEvent } from '../contracts/schemas';
-import { centsValue, eurosToCents } from '../domain/Money';
+import { centsValue, currencyCode, eurosToCents } from '../domain/Money';
 import { asObject, findKey, type ProviderAdapter, type RawMessage } from './ProviderAdapter';
 
 const MAP: Record<string, EventType> = {
@@ -64,7 +64,7 @@ export const PragmaticAdapter: ProviderAdapter = {
         const total = findKey(o, 'total');
         data.amount = centsValue(findKey(total ?? o, 'amount'));
         const cur = findKey(total ?? o, 'currency') ?? findKey(o, 'currency');
-        if (typeof cur === 'string') data.currency = cur;
+        if (typeof cur === 'string') data.currency = currencyCode(cur);
         break;
       }
     }

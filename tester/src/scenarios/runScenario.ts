@@ -58,6 +58,22 @@ interface RunContext {
 }
 
 class PhaseError extends Error {}
+
+/**
+ * Pantalla de introducción de Pragmatic (p. ej. Bubble Up: «No volver a mostrar» + flecha de continuar):
+ * tapa la barra inferior, así que no se puede leer la apuesta. Se pasa como un jugador, con un clic en el
+ * centro (fuera del botón de spin). Nunca con Espacio: sin intro, Espacio lanzaría una tirada con dinero real.
+ */
+async function dismissIntro(page: Page, game: GameHandle, ev: Evidence) {
+  const before = await game.element.screenshot().catch(() => null);
+  const box = await game.element.boundingBox();
+  if (!before || !box) return;
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5, { delay: 60 });
+  await page.waitForTimeout(T.settleMs + 1000);
+  const after = await game.element.screenshot().catch(() => null);
+  const changed = after ? changedFraction(before, after) : 0;
+  ev.log('action', 'intro', changed > 0.12 ? `clic en el centro: la pantalla cambió (${Math.round(changed * 100)} %), intro cerrada` : `clic en el centro: sin cambios (${Math.round(changed * 100)} %), no había intro o no se cerró`);
+}
 const need = (cond: unknown, msg: string) => {
   if (!cond) throw new PhaseError(msg);
 };
@@ -163,6 +179,7 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
       throw new PhaseError('el juego no emitió READY (gameLoadingEnded) en 60 s');
     });
     await page.waitForTimeout(T.settleMs); // pantalla tranquila: sin animación de entrada a medias
+    await dismissIntro(page, game!, ev);
     const png = await game!.element.screenshot();
     need(pixelStd(png) > 6, 'el juego no se renderiza (recuadro en negro o en blanco)');
     game!.sender = bus.state.sender;

@@ -6,6 +6,7 @@ import {
   GameRound, type ActionRecord, type Cents, type RunConfig, type Scenario, type SpinRecord, type StandardEvent,
   type VisualReading, type WalletReading,
 } from '../contracts/schemas';
+import { SYMBOL_TO_CODE } from './Money';
 
 /** C16 */
 export interface InitialState {
@@ -35,7 +36,6 @@ export interface RoundInputs {
   betssonAfter?: WalletReading;
 }
 
-const SYMBOL_TO_CODE: Record<string, string> = { '€': 'EUR', 'S/': 'PEN' };
 
 export function buildGameRound(inp: RoundInputs): GameRound {
   const ev = (type: StandardEvent['type']) => inp.trace?.events.filter((e) => e.type === type) ?? [];
