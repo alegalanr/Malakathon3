@@ -96,10 +96,14 @@ Qué funciona y quién está con cada parte. Cada agente actualiza **solo su sec
 
 ## Tester contra betsson.es real (login manual, sesión DGOJ, carga del juego)
 
-- **Estado:** 🟡
+- **Estado:** ✅ (escenario 1 completo; escenario 2 con 5/6 en real y el que faltaba corregido sin conexión)
 - **Quién:** Paola
-- **Cómo:** login manual (el anti-bot de Group-IB bloquea el login automatizado; lo indican los mentores): `tester/scripts/save-session.mjs` + `MANUAL_LOGIN=1`. Sesión de juego DGOJ («Atención» → formulario 5 Horas / 100 % → «Iniciar sesión»). Carga del juego de 75-133 s a ~21 s (caché de recursos en `.cache/assets`, traza desde READY, sin recarga con `?gameAction=play`). Intro de Pragmatic cerrada por OCR, apuesta inicial de `doInit`, Espacio al iframe interno, `DRY_RUN=1` para ensayar sin apostar.
-- **Evidencia:** prueba real del escenario 1 en Bubble Up (15/10, 4,00 €): 6 de 8 checks PASS (ronda empezada y terminada, apuesta evento = red, moneda, saldo del juego 59,50 → 55,50 € = red, saldo de Betsson 55,50 €). Fallaban las dos lecturas de pantalla (apuesta y rid): con las variantes invertidas ×8/×5 del preprocesado leen «4,00 €» y el rid en las capturas reales, pero falta repetirlo en real tras fusionar con el testigo de consenso de main.
+- **Cómo:** login manual (el anti-bot de Group-IB bloquea el login automatizado; lo indican los mentores): `tester/scripts/save-session.mjs` + `MANUAL_LOGIN=1`, una sesión guardada por escenario (cuenta con saldo y cuenta sin saldo). Sesión de juego DGOJ («Atención» → formulario 5 Horas / 100 % → «Iniciar sesión»). Carga del juego de 75-133 s a ~21 s (caché de recursos en `.cache/assets`, traza desde READY, sin recarga con `?gameAction=play`). Intro de Pragmatic cerrada por OCR, apuesta inicial de `doInit`, Espacio al iframe interno, `DRY_RUN=1` para ensayar sin apostar. Rechazo confirmado: `balanceTooLow` en `config/rejection-hypotheses.json`.
+- **Evidencia:**
+  - Escenario 1 real en Bubble Up (15/10, apuesta 4,00 €): **8/8 PASS** (ronda empezada y terminada, apuesta evento = red = pantalla «4,00 €», moneda EUR, saldo del juego y de Betsson 47,50 → 43,50 €, rid en pantalla = rid de doSpin).
+  - Escenario 2 real con la cuenta sin saldo (15/10, saldo 0,30 €, apuesta 3,20 €): **5/6 PASS** (rechazada sin cobro, aviso «Fondos insuficientes…» en español, moneda, cartera y saldo del juego sin cambios). Fallaba `S2-BET-VISIBLE` por falta de segunda lectura; con la variante `x7-gris` y 7 intentos hay consenso en las 4 capturas reales (3,20 € y 4,00 €), comprobado sin conexión. Falta repetir el escenario 2 en real.
+  - Pragmatic rechaza en el cliente: `balanceTooLow` a ~850 ms, sin llamada a `gameService`, y la ventana del aviso a ~2,8 s.
+  - 64 tests unitarios en verde.
 
 ## Pitch
 

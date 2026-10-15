@@ -1,9 +1,9 @@
 {
-  "$comment": "HIPÓTESIS de cómo se ve un rechazo por saldo insuficiente en Pragmatic Play. Se confirma o corrige con la primera ejecución real del escenario 2 (reports/es-insufficient-balance/rejection-contract.json). Al confirmarlo, cambia status a 'confirmed' y deja solo lo que se haya visto.",
-  "status": "hypothesis",
+  "$comment": "CONFIRMADO (15/10) con la primera ejecución real del escenario 2 en betsson.es (Bubble Up, saldo 0,30 € y apuesta 3,20 €; reports/es-insufficient-balance/rejection-contract.json): Pragmatic rechaza en el cliente. Manda el evento balanceTooLow (y autoplayEnded) a los ~850 ms, NO llama a gameService (ni doSpin ni error de red) y a los ~2,8 s muestra la ventana «MENSAJE · Fondos insuficientes para realizar esta apuesta…». balanceTooLow es lo visto; el resto siguen siendo hipótesis para otros juegos.",
+  "status": "confirmed",
   "events": {
-    "namePatterns": ["nomoney", "no_money", "notenough", "not_enough", "insufficient", "lowbalance", "low_balance"],
-    "payloadPatterns": ["insufficient", "not enough", "no money", "nomoney", "saldo insuficiente", "fondos insuficientes", "balance too low"]
+    "namePatterns": ["balanceTooLow", "nomoney", "no_money", "notenough", "not_enough", "insufficient", "lowbalance", "low_balance"],
+    "payloadPatterns": ["balancetoolow", "insufficient", "not enough", "no money", "nomoney", "saldo insuficiente", "fondos insuficientes", "balance too low"]
   },
   "network": {
     "errorKeys": ["err", "error", "errorcode", "error_code", "frozen", "msg_code"]

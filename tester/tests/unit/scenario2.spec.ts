@@ -75,6 +75,15 @@ test.describe('hipótesis del rechazo', () => {
     expect(byPayload.type).toBe('REJECTED');
   });
 
+  test('✔ rechazo real de Bubble Up (15/10): balanceTooLow → REJECTED', () => {
+    const raw = { sender: 'vs20bblup_cv116', lang: 'ES', success: true, winAmount: 0, balanceAfter: 0.3, betAmount: 3.2, balanceBefore: 0.3, amount: 0.3, name: 'balanceTooLow' };
+    const e = PragmaticAdapter.translate({ t: 5, origin: GAME, data: raw }, GAME)!;
+    expect(e.type).toBe('REJECTED');
+    expect(e.data.reason).toContain('balanceTooLow');
+    // autoplayEnded llega a la vez y no es un rechazo
+    expect(PragmaticAdapter.translate({ t: 5, origin: GAME, data: { event: 'autoplayEnded' } }, GAME)?.type).not.toBe('REJECTED');
+  });
+
   test('los eventos del catálogo nunca pasan a REJECTED', () => {
     const e = PragmaticAdapter.translate({ t: 5, origin: GAME, data: { event: 'updateBalance', params: { total: { amount: 0, currency: 'EUR' } } } }, GAME)!;
     expect(e.type).toBe('BALANCE');
