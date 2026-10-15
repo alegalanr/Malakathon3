@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import { expect, test } from '@playwright/test';
 import type { Scenario } from '../src/contracts/schemas';
-import { authFile, loadRunConfig, marketFromEnv, runMode } from '../src/config/RunConfig';
+import { authFile, loadRunConfig, marketFromEnv, readCredentials, runMode } from '../src/config/RunConfig';
 import { runScenario } from '../src/scenarios/runScenario';
 import { simulateScenario } from '../src/scenarios/simulateScenario';
 import { writeRunReport } from '../src/report/Report';
@@ -18,6 +18,11 @@ export function scenarioTest(scenario: Scenario) {
 
   test(`${scenario} · ${market} · ${mode}`, async ({ page, context }, testInfo) => {
     const cfg = loadRunConfig(market, scenario, mode);
+    // Sin credenciales no hay nada que probar en real: se salta con el motivo en vez de dar FAIL en cadena
+    test.skip(
+      mode === 'real' && !readCredentials(cfg),
+      `Faltan ${cfg.credentialEnv.userEnv} y ${cfg.credentialEnv.passEnv} (en tester/.env o en el .env de la raíz del repo)`,
+    );
     const report = mode === 'real' ? await runScenario({ page, context, cfg, testInfo }) : await simulateScenario({ page, cfg });
     const { dir, secrets, contractErrors } = writeRunReport(report, cfg);
     await testInfo.attach('report.html', { path: `${dir}/report.html`, contentType: 'text/html' });
