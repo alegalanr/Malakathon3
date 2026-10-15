@@ -168,8 +168,9 @@ export class ScreenWitness {
       const { raw: crop } = await cropRel(state.png, roi);
       const res = await this.ocr.recognize(await preprocess(crop, variant), {
         mode: field === 'message' ? 'block' : 'line',
-        // Sin espacio en la lista: con espacio, tesseract.js devuelve confianza 0
-        whitelist: field === 'rid' ? '#0123456789' : field === 'bet' ? '0123456789.,€S/' : undefined,
+        // Apuesta CON espacio: ✔ (15/10, Bubble Up real) sin él, el hueco entre «4,00» y «€» se lee «6» o se pierde
+        // («4.006€», «400€») y no hay consenso; con él, x4/x5-gris leen «4,00 €» con confianza 0,99
+        whitelist: field === 'rid' ? '#0123456789' : field === 'bet' ? '0123456789.,€S/ ' : undefined,
       });
       const a = this.interpret(field, res.text, res.confidence, cfg, crop);
       attempts.push(a);
