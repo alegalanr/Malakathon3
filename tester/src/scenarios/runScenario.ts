@@ -8,11 +8,12 @@ import type {
   ActionRecord, Check, Control, ControlMap, GameRound, PhaseId, PhaseStatus, RunConfig, RunReport, SessionState,
   VisualReading, WalletReading,
 } from '../contracts/schemas';
-import { CONTROL_MAPS_DIR, REPORTS_DIR } from '../config/RunConfig';
+import { ASSETS_DIR, CONTROL_MAPS_DIR, REPORTS_DIR } from '../config/RunConfig';
 import { buildGameRound, type InitialState, type RoundTrace } from '../domain/GameRound';
 import { Evidence } from '../evidence/Evidence';
 import { redactText } from '../evidence/redact';
 import { loadControlMap, saveControlMap } from '../game/ControlMap';
+import { AssetCache } from '../game/AssetCache';
 import { GameEventBus } from '../game/GameEventBus';
 import { GameExplorer } from '../game/GameExplorer';
 import { changedFraction, findGameFrame, pixelStd, type GameHandle } from '../game/GameFrame';
@@ -112,6 +113,7 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
   const ev = new Evidence(REPORTS_DIR, `${cfg.market}-${cfg.scenario}`);
   const ctx: RunContext = { config: cfg, phases: [] };
   const ocr = new OcrEngine();
+  const assets = new AssetCache(ASSETS_DIR);
   const site = new BetssonSite(page, cfg);
   const s1 = cfg.scenario === 'completed-spin';
   const shots: { settled?: string; rejected?: string; idle?: string; wallet?: string } = {};
@@ -136,9 +138,10 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
 
   // ---------------------------------------------------------------- F0
   await phase('F0', 'Preparación', async () => {
+    await assets.attach(context);
     await ocr.init(cfg.ocr.languages);
     if (!ocr.ready) ev.log('note', 'OCR', `no disponible (${ocr.error}): los checks *-VISIBLE quedarán FAIL`);
-    return ['config', 'evidence', ocr.ready ? 'ocr' : 'ocr: no disponible'];
+    return ['config', 'evidence', 'caché de recursos', ocr.ready ? 'ocr' : 'ocr: no disponible'];
   });
 
   // ---------------------------------------------------------------- F1
@@ -156,8 +159,6 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
     need(first, 'la cartera de Betsson no respondió: sesión no válida');
     need(first!.currency === cfg.currency, `mercado incorrecto: la cartera está en ${first!.currency}, se esperaba ${cfg.currency}`);
     await ev.capture(page, 'casino', 'Casino con la sesión iniciada');
-    // La traza empieza DESPUÉS del login (y nunca se publica, D9)
-    tracing = await context.tracing.start({ screenshots: true, snapshots: true }).then(() => true, () => false);
     return ['session', 'wallet: primera lectura'];
   });
 
@@ -191,6 +192,7 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
   // ---------------------------------------------------------------- F3
   await phase('F3', 'Juego listo', async () => {
     need(ctx.listeners, 'faltan los oyentes: F2 falló');
+    const loadStart = Date.now();
     const how = await site.searchGame();
     ev.log('note', 'juego', `«${cfg.game.search}» abierto por ${how}`);
     ev.log('note', 'Real Play', await site.launchRealPlay());
@@ -208,6 +210,11 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
     await bus.waitForReady({ stallMs: T.loadStallMs, maxMs: T.loadMaxMs }).catch((e: Error) => {
       throw new PhaseError(`el juego no emitió READY (gameLoadingEnded): ${e.message}`);
     });
+    // La traza empieza con el juego listo (después del login, y nunca se publica, D9): grabarla durante la
+    // carga multiplicaba su duración (✔ 15/10). La carga queda en la línea temporal y en las capturas.
+    tracing = await context.tracing.start({ screenshots: true, snapshots: true }).then(() => true, () => false);
+    const s = assets.stats;
+    ev.log('note', 'carga', `juego listo en ${Math.round((Date.now() - loadStart) / 1000)} s · caché: ${s.hits} de disco (${(s.bytesFromDisk / 1e6).toFixed(1)} MB), ${s.misses} descargados`);
     await page.waitForTimeout(T.settleMs); // pantalla tranquila: sin animación de entrada a medias
     await dismissIntro(page, game!, ev, ocr);
     const png = await game!.element.screenshot();
@@ -291,6 +298,12 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
     if (ctx.initial.gameBalance !== b0!.amount) ev.log('note', 'hallazgo', `saldo del juego ${ctx.initial.gameBalance} ≠ cartera ${b0!.amount} (puede ser desfase de refresco)`);
     return ['initial'];
   });
+
+  // Ensayo sin apostar: todo hasta el estado inicial (sesión, juego, intro, apuesta) y ninguna tirada
+  if (process.env.DRY_RUN === '1' && !halted) {
+    halted = 'DRY_RUN=1: ensayo sin apostar';
+    ev.log('note', 'DRY_RUN', 'ensayo sin apostar: se para antes de F6');
+  }
 
   // ---------------------------------------------------------------- F6
   let baselineBeforeAction: Buffer | null = null;

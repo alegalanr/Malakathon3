@@ -17,6 +17,10 @@ Todo en Docker (imagen oficial de Playwright); en el host no se instala nada.
 
    Opcionales: `MAX_BET` (EUR, por defecto 5), `GAME_NAME` / `GAME_SEARCH` / `GAME_PATH` (por defecto Bubble Up), `RUN_MODE` (`real` por defecto en local), `SIMULATION` (`pass` | `mixed`).
 
+   **Login manual** (el anti-bot de Group-IB bloquea el login automatizado; lo indican los mentores): abre un navegador normal con `msedge.exe --remote-debugging-port=9222 --user-data-dir=<carpeta temporal> https://www.betsson.es/inicio`, inicia sesión a mano y guarda la sesión con `node tester/scripts/save-session.mjs es completed-spin` (en el host, Node ≥ 22). Después, ejecuta con `-e MANUAL_LOGIN=1`.
+
+   Más opciones: `DRY_RUN=1` (ensayo sin apostar: llega hasta F5 y no gira), `GAME_SESSION_TIME` / `GAME_SESSION_LOSS` (sesión de juego DGOJ; por defecto «5 Horas» y «100%»). Los recursos estáticos del juego se guardan en `.cache/assets` (no se sube): la primera carga descarga ~30 MB y las siguientes salen de disco.
+
 2. Primera vez: `docker compose -f tester/compose.yaml run --rm tester npm install`
 
 3. Modo UI → <http://localhost:8080>, proyecto **`es`**:

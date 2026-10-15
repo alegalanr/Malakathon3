@@ -59,7 +59,8 @@ export class GameEventBus {
   }
 
   ingest(msg: RawMessage) {
-    this.trackLoading(msg);
+    // loadingProgress llega cientos de veces por carga: solo se registran los hitos (25/50/75/100 %)
+    if (this.trackLoading(msg)) return;
     const e = this.adapter.translate(msg, this.gameOrigin);
     if (!e) {
       this.ev.log('raw', 'message', msg.origin, msg.data, msg.t);
@@ -78,21 +79,27 @@ export class GameEventBus {
     });
   }
 
-  private trackLoading(msg: RawMessage) {
+  /** true si el mensaje era loadingProgress (ya tratado). */
+  private trackLoading(msg: RawMessage): boolean {
     let o: unknown = msg.data;
     if (typeof o === 'string') {
+      if (!o.includes('loadingProgress')) return false;
       try {
         o = JSON.parse(o);
       } catch {
-        return;
+        return false;
       }
     }
     const m = o as { event?: string; params?: { percentage?: number } } | null;
-    const p = m?.event === 'loadingProgress' ? m.params?.percentage : undefined;
+    if (m?.event !== 'loadingProgress') return false;
+    const p = m.params?.percentage;
     if (typeof p === 'number' && p > this.loading.percent) {
+      const milestone = [25, 50, 75, 100].find((x) => this.loading.percent < x && p >= x);
       this.loading.percent = p;
       this.loading.advancedAt = msg.t;
+      if (milestone) this.ev.log('event', 'carga', `${p} %`, undefined, msg.t);
     }
+    return true;
   }
 
   /**

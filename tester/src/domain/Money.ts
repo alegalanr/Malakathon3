@@ -25,7 +25,8 @@ export function centsValue(v: unknown): Cents | undefined {
  * con el del mercado (el juego puede formatear distinto que la web); el informe enseña el texto en bruto.
  */
 export function parseDisplayedAmount(text: string, fmt: NumberFormat): Cents | null {
-  const s = text.replace(/[^\d.,]/g, '');
+  // Primer importe del texto: el recorte puede coger texto vecino (✔ «4,00 € 3X» en Bubble Up)
+  const s = text.match(/\d(?:[\d.,]*\d)?/)?.[0] ?? '';
   if (!/\d/.test(s)) return null;
   const lastSep = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'));
   let intPart = s;

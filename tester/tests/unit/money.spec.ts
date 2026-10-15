@@ -37,3 +37,9 @@ test('moneda del juego («€») y de la cartera («EUR») se comparan por códi
   expect(currencyCode('S/')).toBe('PEN');
   expect(currencyCode('eur')).toBe('EUR');
 });
+
+test('importe leído en pantalla con texto vecino: se toma el primero', () => {
+  expect(parseDisplayedAmount('4,00 € 3X', ES)).toBe(400);
+  expect(parseDisplayedAmount('APUESTA 4,00 €', ES)).toBe(400);
+  expect(parseDisplayedAmount('1.234,56 € 2', ES)).toBe(123456);
+});

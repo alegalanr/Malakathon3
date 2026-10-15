@@ -22,10 +22,18 @@ async function visible(l: Locator, timeout = 1500): Promise<boolean> {
 const loginButton = (page: Page) => page.locator('fds-button').filter({ hasText: /^\s*Iniciar sesi[oó]n\s*$/i });
 
 export class BetssonSite {
+  /** Última petición al lanzador de juegos de Betsson (sin guardar la URL: lleva el token de sesión). */
+  private launcher?: { forReal: boolean; t: number };
+
   constructor(
     private page: Page,
     private cfg: RunConfig,
-  ) {}
+  ) {
+    page.on('request', (r) => {
+      const u = r.url();
+      if (/\/api\/v\d+\/Gamelauncher\//i.test(u)) this.launcher = { forReal: new URL(u).searchParams.get('forReal') === 'true', t: Date.now() };
+    });
+  }
 
   async openCasino() {
     await this.page.goto(this.cfg.baseUrl + this.cfg.casinoPath, { waitUntil: 'domcontentloaded' });
@@ -121,6 +129,11 @@ export class BetssonSite {
    * Nunca se pulsa un botón de demo / jugar gratis.
    */
   async launchRealPlay(): Promise<string> {
+    // ✔ (15/10) Con sesión, la página del juego ya lo lanza en Real Play (Gamelauncher forReal=true):
+    // recargar con ?gameAction=play solo reiniciaba la carga (~30 MB) desde cero.
+    const since = Date.now() - 15_000;
+    for (let i = 0; i < 12 && !(this.launcher && this.launcher.t >= since); i++) await this.page.waitForTimeout(500);
+    if (this.launcher && this.launcher.t >= since && this.launcher.forReal) return 'Real Play directo (lanzador con forReal=true)';
     const real = this.page
       .locator('fds-button, button')
       .filter({ hasText: /^\s*(jugar|jugar ahora|jugar con dinero real|play|play now)\s*$/i })
