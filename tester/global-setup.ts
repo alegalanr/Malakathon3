@@ -16,7 +16,8 @@ export default async function globalSetup() {
   const market = marketFromEnv();
   const scenarios: Scenario[] = ['completed-spin', 'insufficient-balance'];
   if (runMode() === 'simulated' || process.env.SKIP_LOGIN === '1') {
-    for (const s of scenarios) fs.writeFileSync(authFile(market, s), EMPTY);
+    // Sin pisar una sesión guardada (p. ej. la del login manual): los tests unitarios la borraban
+    for (const s of scenarios) if (!fs.existsSync(authFile(market, s))) fs.writeFileSync(authFile(market, s), EMPTY);
     return;
   }
   if (process.env.MANUAL_LOGIN === '1') {
