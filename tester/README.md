@@ -76,6 +76,24 @@ Si una fase de F1-F9 falla, las siguientes quedan "no ejecutada" con el motivo; 
 | `markets.json` no tenía `es` (la testbed) | Añadido con `loginPath`, `locale`, `timezone` y formato de número | Las cuentas son de betsson.es |
 | Vídeo | Desactivado | El vídeo graba el usuario en pantalla y no se puede enmascarar (DISENO lo deja opcional) |
 
+## Seguridad de las evidencias
+
+Las capturas, el timeline y los informes de una ejecución real pueden enseñar datos de la cuenta de prueba. Medidas:
+
+| Riesgo | Medida |
+|---|---|
+| Usuario o perfil en las capturas de página completa (casino, sesión DGOJ, cartera tras la ronda) | Se tapan con `privacy.maskSelectors` de `config/markets.json` (cabecera y zonas de cuenta o perfil) |
+| Un selector que no tapa algo | `src/evidence/PrivacyScan.ts`: antes del informe, el OCR lee cada captura y, si aparece el usuario o la contraseña (`BETSSON_*_USER` / `_PASS`), la difumina. Sin OCR, difumina por precaución las capturas de página completa |
+| Tokens en la consola (acaba en los logs de CI) | La consola se censura igual que `timeline.jsonl` |
+| Informes públicos | Las ejecuciones `real` no se publican en GitHub Pages (que puede ser público aunque el repo sea privado): quedan en el artefacto `site`, visible solo con acceso al repo. Para publicarlas hay que poner a propósito la variable `PUBLISH_REAL_TO_PAGES=true` |
+| Dos ejecuciones a la vez sobre la misma cuenta (dinero gastado de más, saldos que no cuadran) | `concurrency` en el workflow: las ejecuciones se ponen en cola. **En local no hay cola**: no lances una ejecución real mientras corre otra, en CI o en otro ordenador |
+| Datos del OCR descargados de un CDN | Vienen de los paquetes `@tesseract.js-data/eng` y `spa` (integridad por `package-lock.json`); `npm install` los deja en `.cache/tessdata` |
+| Una Action de GitHub alterada | Las Actions van fijadas por commit (SHA), con la versión en un comentario |
+
+El bot antiguo en Python (`bot/`) manda capturas a APIs de IA externas (`bot/vision.py`): **no se usa con sesión real**, porque las capturas con datos de la cuenta saldrían a un tercero. El tester (`tester/`) no usa IA externa.
+
+Tras la primera ejecución real, revisa a mano las capturas de `reports/es-*/evidence/` antes de compartir nada: las máscaras dependen de selectores de la web que no se han podido comprobar sin sesión.
+
 ## Escenario 2 y casos raros
 
 ### Rechazo por saldo insuficiente (F7)

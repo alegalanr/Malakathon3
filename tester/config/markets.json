@@ -8,7 +8,7 @@
     "timezone": "Europe/Madrid",
     "currency": "EUR",
     "currencySymbol": "€",
-    "numberFormat": { "decimal": ",", "thousands": "." },
+    "numberFormat": { "decimal": ",", "thousands": ".", "alwaysDecimals": true },
     "texts": {
       "insufficientBalance": ["saldo insuficiente", "fondos insuficientes", "sin fondos", "insuficiente", "no tienes suficiente", "no tienes saldo suficiente", "saldo no es suficiente", "no dispones de saldo suficiente"]
     },
@@ -49,6 +49,14 @@
     "search": "Bubble Up",
     "path": "/casino/tragaperras-slots/bubble-up",
     "maxBet": 5
+  },
+  "privacy": {
+    "maskSelectors": [
+      "header",
+      "[data-test-id*='account' i]", "[data-testid*='account' i]", "[class*='account' i]",
+      "[class*='username' i]", "[class*='user-name' i]", "[class*='profile' i]",
+      "[aria-label*='cuenta' i]", "[aria-label*='perfil' i]", "[aria-label*='account' i]"
+    ]
   },
   "ocr": {
     "languages": ["eng", "spa"],

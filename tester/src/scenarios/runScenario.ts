@@ -14,7 +14,8 @@ import { CONTROL_MAPS_DIR, REPORTS_DIR } from '../config/RunConfig';
 import { buildGameRound, type InitialState, type RoundTrace } from '../domain/GameRound';
 import { extendedRoundSignals, scenarioPrecondition } from '../edge-cases/EdgeCases';
 import { Evidence } from '../evidence/Evidence';
-import { redact, redactText } from '../evidence/redact';
+import { scrubScreenshots } from '../evidence/PrivacyScan';
+import { credentialValues, redact, redactText } from '../evidence/redact';
 import { loadControlMap, saveControlMap } from '../game/ControlMap';
 import { GameEventBus } from '../game/GameEventBus';
 import { GameExplorer } from '../game/GameExplorer';
@@ -72,6 +73,14 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
   const { page, context, cfg } = args;
   const startedAt = new Date().toISOString();
   const ev = new Evidence(REPORTS_DIR, `${cfg.market}-${cfg.scenario}`);
+  // Capturas de página completa: se tapan los datos de la cuenta (privacy.maskSelectors) y luego se
+  // revisan con OCR antes del informe (PrivacyScan). Las del recuadro del juego no los muestran.
+  const pageShots: string[] = [];
+  const capturePage = async (name: string, label: string, t?: number) => {
+    const c = await ev.capture(page, name, label, t, { mask: (cfg.privacy?.maskSelectors ?? []).map((sel) => page.locator(sel)) });
+    if (c) pageShots.push(c.path);
+    return c;
+  };
   const ctx: RunContext = { config: cfg, phases: [] };
   const ocr = new OcrEngine();
   const site = new BetssonSite(page, cfg);
@@ -117,7 +126,7 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
     }
     need(first, 'la cartera de Betsson no respondió: sesión no válida');
     need(first!.currency === cfg.currency, `mercado incorrecto: la cartera está en ${first!.currency}, se esperaba ${cfg.currency}`);
-    await ev.capture(page, 'casino', 'Casino con la sesión iniciada');
+    await capturePage('casino', 'Casino con la sesión iniciada');
     // La traza empieza DESPUÉS del login (y nunca se publica, D9)
     tracing = await context.tracing.start({ screenshots: true, snapshots: true }).then(() => true, () => false);
     return ['session', 'wallet: primera lectura'];
@@ -159,7 +168,7 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
     const dgoj = await site.handleGameSession();
     if (dgoj !== 'none') ev.log('note', 'sesión de juego DGOJ', dgoj);
     if (dgoj === 'blocked') {
-      await ev.capture(page, 'sesion-dgoj', 'Sesión de juego (DGOJ) pendiente');
+      await capturePage('sesion-dgoj', 'Sesión de juego (DGOJ) pendiente');
       throw new PhaseError('la sesión de juego (DGOJ) pide datos que el tester no sabe rellenar todavía');
     }
     const game = await findGameFrame(page, T.readyMs);
@@ -410,7 +419,7 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
     if (reloaded) ev.log('note', 'cartera', 'no se refrescó sola: se recargó la página como haría un jugador');
     need(reading && reading.t > ref, 'cartera no actualizada a tiempo');
     ctx.betssonAfter = reading!;
-    const c = await ev.capture(page, 'wallet-after', 'Betsson tras la ronda (B1)', reading!.t);
+    const c = await capturePage('wallet-after', 'Betsson tras la ronda (B1)', reading!.t);
     shots.wallet = c?.path;
     return ['betssonAfter'];
   });
@@ -443,6 +452,14 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
     const file = args.testInfo?.outputPath('trace.zip');
     await context.tracing.stop(file ? { path: file } : undefined).catch(() => {});
   }
+  // Privacidad: ninguna captura del informe puede enseñar el usuario o la contraseña
+  const privacy = await scrubScreenshots({ dir: ev.dir, files: ev.screenshots.map((x) => x.path), ocr, secrets: credentialValues(), pageShots });
+  for (const b of privacy.blurred) {
+    const shot = ev.screenshots.find((x) => x.path === b.path);
+    if (shot) shot.label += ' · difuminada por privacidad';
+    ev.log('note', 'privacidad', `${b.path}: ${b.reason}`);
+  }
+  if (privacy.checked) ev.log('note', 'privacidad', `${privacy.checked} captura(s) revisadas con OCR, ${privacy.blurred.length} difuminada(s)`);
   await ocr.terminate();
 
   await phase('F12', 'Evidencia e informe', async () => {
