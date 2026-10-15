@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Locator, Page } from '@playwright/test';
-import { redact } from './redact';
+import { redact, redactText } from './redact';
 
 export interface TimelineEntry {
   t: number;
@@ -30,7 +30,8 @@ export class Evidence {
 
   log(source: TimelineEntry['source'], type: string, summary: string, data?: unknown, t = Date.now()) {
     this.timeline.push({ t, source, type, summary, data });
-    if (source !== 'raw') console.log(`  ${source.padEnd(7)} ${type}${summary ? ' · ' + summary : ''}`);
+    // La consola acaba en los logs de CI: se censura igual que el timeline
+    if (source !== 'raw') console.log(redactText(`  ${source.padEnd(7)} ${type}${summary ? ' · ' + summary : ''}`));
   }
 
   rel(file: string) {
@@ -46,9 +47,12 @@ export class Evidence {
     return rel;
   }
 
-  /** Captura de la página o de un elemento (el recuadro del juego). `t` = hora del evento disparador. */
-  async capture(target: Page | Locator, name: string, label: string, t = Date.now()): Promise<{ png: Buffer; path: string; t: number } | null> {
-    const png = await target.screenshot({ animations: 'allow' }).catch(() => null);
+  /**
+   * Captura de la página o de un elemento (el recuadro del juego). `t` = hora del evento disparador.
+   * `mask`: zonas que se tapan antes de guardar (datos de la cuenta en las capturas de página completa).
+   */
+  async capture(target: Page | Locator, name: string, label: string, t = Date.now(), opts: { mask?: Locator[] } = {}): Promise<{ png: Buffer; path: string; t: number } | null> {
+    const png = await target.screenshot({ animations: 'allow', ...(opts.mask?.length ? { mask: opts.mask, maskColor: '#000' } : {}) }).catch(() => null);
     if (!png) return null;
     return { png, path: this.savePng(name, png, label, t), t };
   }

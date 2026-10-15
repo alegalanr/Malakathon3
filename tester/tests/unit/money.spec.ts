@@ -23,6 +23,16 @@ test('importes mostrados en pantalla según el mercado', () => {
   expect(parseDisplayedAmount('€', ES)).toBeNull();
 });
 
+test('pantalla: rechaza lo ambiguo en vez de adivinar', () => {
+  const STRICT = { ...ES, alwaysDecimals: true };
+  expect(parseDisplayedAmount('2.80 €', ES)).toBe(280); // coma leída como punto
+  expect(parseDisplayedAmount('2,8O €', ES)).toBe(280); // O leída en vez de 0
+  expect(parseDisplayedAmount('280 €', STRICT)).toBeNull(); // coma perdida: no son 280 €
+  expect(parseDisplayedAmount('2,80 € 3,00 €', ES)).toBeNull(); // dos importes
+  expect(parseDisplayedAmount('2,805 €', ES)).toBeNull(); // 3 decimales
+  expect(parseDisplayedAmount('1 €', ES)).toBe(100);
+});
+
 test('símbolo de moneda y formato', () => {
   expect(currencySymbolIn('4,00 €')).toBe('€');
   expect(currencySymbolIn('S/ 2.80')).toBe('S/');

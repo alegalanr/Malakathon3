@@ -4,6 +4,8 @@ Bot que prueba, como lo haría un jugador, un juego de Pragmatic Play en Real Pl
 
 Proyecto para el reto de Betsson del Malakathon 3.
 
+**¿Primera vez?** Sigue [ARRANQUE.md](ARRANQUE.md): con Git y Docker, un script lo instala y lo prueba todo.
+
 ## Cómo funciona
 
 > Describe el esqueleto actual, que es anterior al enunciado oficial. Lo que cambia está en [docs/reto.md](docs/reto.md#impacto-en-lo-que-ya-tenemos).

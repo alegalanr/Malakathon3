@@ -110,3 +110,4 @@ Para abrir la traza: `npx playwright show-trace runs/<run_id>/trace.zip`, o arra
 | 14/10 | `console_errors` cuenta solo las excepciones JavaScript no capturadas desde que se abre el juego | Las webs reales llenan la consola de `console.error` que no tienen que ver con el juego | Contar todos los `console.error` |
 | 14/10 | Cookies: rechazar las no esenciales; aceptar solo si no hay forma de rechazar | Privacidad, y es lo que haría un usuario prudente | Aceptar siempre |
 | 14/10 | Casino simulado (`mock_casino/`) para ensayar | Permite probar PASS y FAIL provocados de forma reproducible sin depender de la web real | — |
+| 15/10 | Testigo visual: rid y apuesta solo se aceptan si dos lecturas con preprocesados distintos coinciden | Una lectura suelta confunde dígitos con confianza alta (603731119 por 663731119) y la apuesta leída en F5 decide si se gira con dinero real | Aceptar la primera lectura con confianza ≥ umbral |

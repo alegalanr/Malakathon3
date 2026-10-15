@@ -14,6 +14,12 @@ on:
 permissions:
   contents: read
 
+# Las cuentas de prueba tienen un solo saldo: dos ejecuciones a la vez lo moverían en paralelo
+# (dinero gastado de más y saldos que no cuadran). Se ponen en cola, sin cancelar la que va en curso.
+concurrency:
+  group: betsson-test-accounts
+  cancel-in-progress: false
+
 jobs:
   validate:
     name: ${{ matrix.scenario }} · ${{ matrix.market }}
@@ -32,18 +38,14 @@ jobs:
       SCENARIO: ${{ matrix.scenario }}
       RUN_MODE: ${{ inputs.run_mode || vars.RUN_MODE || 'simulated' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: tester/package-lock.json
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - uses: actions/cache@v4
-        with:
-          path: tester/.cache/tesseract
-          key: tesseract-eng-spa
       - name: Tests unitarios
         run: npx playwright test --project=unit
         env:
@@ -57,7 +59,7 @@ jobs:
         run: npx playwright test tests/${{ matrix.scenario }}.spec.ts --project=${{ matrix.market }}
       - name: Subir informe y evidencias
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: report-${{ matrix.market }}-${{ matrix.scenario }}
           path: |
@@ -70,12 +72,14 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     permissions: { pages: write, id-token: write, contents: read }
+    env:
+      RUN_MODE: ${{ inputs.run_mode || vars.RUN_MODE || 'simulated' }}
     environment: { name: github-pages, url: "${{ steps.deploy.outputs.page_url }}" }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: 20 }
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with: { path: downloaded, pattern: report-* }
       - name: Fusionar informes
         run: node tester/scripts/merge-reports.mjs downloaded site
@@ -85,11 +89,16 @@ jobs:
         if: always()
         run: cat site/summary.md >> "$GITHUB_STEP_SUMMARY"
       - name: Subir el sitio como artefacto (por si Pages no está activado)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with: { name: site, path: site, retention-days: 14 }
-      - uses: actions/upload-pages-artifact@v3
+      # Pages puede ser público aunque el repo sea privado: las ejecuciones reales (capturas de la cuenta,
+      # saldos) solo quedan en el artefacto "site", visible para quien tiene acceso al repo. Para publicarlas
+      # también en Pages hay que activarlo a propósito con la variable PUBLISH_REAL_TO_PAGES=true.
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        if: env.RUN_MODE != 'real' || vars.PUBLISH_REAL_TO_PAGES == 'true'
         with: { path: site }
       - id: deploy
+        if: env.RUN_MODE != 'real' || vars.PUBLISH_REAL_TO_PAGES == 'true'
         # Requiere activar Pages (Settings → Pages → GitHub Actions); si no, no tapa el resultado de los checks
         continue-on-error: true
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
