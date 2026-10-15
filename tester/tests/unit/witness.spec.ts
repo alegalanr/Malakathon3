@@ -12,6 +12,7 @@ import { VisualReading, type RunConfig, type VisualField } from '../../src/contr
 import { OcrEngine } from '../../src/vision/OcrEngine';
 import { locateRois } from '../../src/vision/RoiLocator';
 import { ScreenWitness, type WitnessRequest } from '../../src/vision/ScreenWitness';
+import { makeFakeGame } from './fixtures/fakeGame';
 import { makeScreen } from './fixtures/fakeScreen';
 
 test.describe.configure({ mode: 'serial' });
@@ -134,6 +135,27 @@ test('recaptura una vez si las dos primeras lecturas no valen (contador aún en 
   );
   expect(recaptures).toBe(1);
   expect(by(readings, 'bet').value).toBe(280);
+});
+
+// Réplica del juego del modo simulado: etiqueta e importe pegados ("APUESTA 0,20 €").
+// Antes la zona del importe se comía la última A de APUESTA y se leía "10,20 €".
+// (El renderizado del SVG no es idéntico al del canvas de Chromium: el caso que lo reproduce aquí es 0,20 € sin aviso.)
+for (const bet of [['4,00 €', 400], ['0,20 €', 20]] as const) {
+  test(`juego simulado: etiqueta pegada al importe → ${bet[0]}`, async () => {
+    const png = await makeFakeGame({ credit: '58,50 €', bet: bet[0], rid: '658268119' });
+    const { readings } = await witness.read(req(png, ['rid', 'bet']));
+    expectContract(readings);
+    expect(by(readings, 'bet').value).toBe(bet[1]);
+    expect(by(readings, 'rid').value).toContain('658268119');
+  });
+}
+
+test('juego simulado con aviso: mensaje en español y apuesta 0,20 €', async () => {
+  const png = await makeFakeGame({ credit: '0,10 €', bet: '0,20 €', message: ['Saldo insuficiente', 'No tienes suficiente saldo.'] });
+  const { readings } = await witness.read(req(png, ['message', 'bet'], {}, cfg2));
+  expectContract(readings);
+  expect(by(readings, 'message').language).toBe('es');
+  expect(by(readings, 'bet').value).toBe(20);
 });
 
 test('OCR sin cargar → no lanza, motivo claro', async () => {

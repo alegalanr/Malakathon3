@@ -67,7 +67,7 @@ Qué funciona y quién está con cada parte. Cada agente actualiza **solo su sec
 - **Estado:** 🟡
 - **Quién:** Julieta
 - **Cómo:** `tester/src/vision/` con las mismas interfaces que usan `runScenario` y `simulateScenario`. Consenso en rid y apuesta (dos lecturas con preprocesados distintos tienen que coincidir; si no, `null` con motivo), confianza por carácter (con lista de caracteres permitidos tesseract.js daba 0 a la palabra), localización de la apuesta por el importe leído y no solo por geometría, idioma del aviso con comparación difusa, recorte por campo y momento (F5 ya no pisa el de F8) y parseo estricto de importes en pantalla (`alwaysDecimals` en `markets.json` de `es`). `TESSDATA_DIR` para usar el OCR sin red.
-- **Evidencia:** `npm run unit` → 29 tests en verde (12 nuevos de OCR real sobre pantallas sintéticas). Con el código anterior, 3 de esos tests fallaban: rid `663731119` leído como `603731119` y apuesta `0,20 €` leída como `0`. Falta probarlo con capturas reales del juego y en modo simulado (necesita Chromium, en Docker).
+- **Evidencia:** `npm run unit` → 32 tests en verde (15 nuevos de OCR real sobre pantallas sintéticas, 3 sobre una réplica del juego del modo simulado). En el modo simulado (Docker) la apuesta salía "10,20 €" en vez de "0,20 €": la zona del importe se comía la última A de APUESTA; corregido. Con el código anterior, 3 de esos tests fallaban: rid `663731119` leído como `603731119` y apuesta `0,20 €` leída como `0`. Falta probarlo con capturas reales del juego y en modo simulado (necesita Chromium, en Docker).
 
 ## Pitch
 

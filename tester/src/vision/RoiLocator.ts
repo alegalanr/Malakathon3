@@ -66,8 +66,12 @@ export async function locateRois(ocr: OcrEngine, gamePng: Buffer, cfg: RunConfig
     if (found.length) {
       const u = union(found.map((w) => w.b));
       const h = u.y1 - u.y0;
-      // Margen generoso: los dígitos con brillo ocupan más que la caja del OCR
-      candidates.push(rel({ x0: u.x0 - h * 0.6, y0: u.y0 - h * 0.45, x1: u.x1 + h * 1.0, y1: u.y1 + h * 0.45 }, bet.text));
+      // Margen generoso (los dígitos con brillo ocupan más que la caja del OCR), pero sin pasar de la
+      // mitad del hueco con la etiqueta: si no, el trazo final de "APUESTA" entra en el recorte y,
+      // con la lista de dígitos permitidos, se lee como un "1" de más ("0,20 €" → "10,20 €").
+      const x0 = value.length ? Math.max(u.x0 - h * 0.6, (a.x1 + u.x0) / 2) : u.x0 - h * 0.6;
+      const y0 = value.length ? u.y0 - h * 0.45 : Math.max(u.y0 - h * 0.45, (a.y1 + u.y0) / 2);
+      candidates.push(rel({ x0, y0, x1: u.x1 + h * 1.0, y1: u.y1 + h * 0.45 }, bet.text));
     }
     // 3) Zonas geométricas (por si el importe no se leyó al localizar): a la derecha y debajo
     candidates.push(rel({ x0: a.x1 + ah * 0.2, y0: a.y0 - ah * 0.4, x1: a.x1 + ah * 0.2 + aw * 2.6, y1: a.y0 + ah * 1.4 }, bet.text));
