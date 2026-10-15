@@ -7,6 +7,7 @@ Todo lo que sabemos de la web. Junto a cada dato, pon cómo lo sabes (una captur
 - URL: https://www.betsson.es (la testbed; desde España betsson.com redirige aquí). Casino en `/casino`. (15/10, navegador)
 - Login: página propia `/inicio?returnUrl=%2Fcasino`, ventana «Iniciar sesión» con «Usuario/email», «Contraseña», «Recordar» y botón «Iniciar sesión»; también «Iniciar sesión con Clave de acceso». El tester rellena los campos correctamente. (15/10, `tester/.auth/login-fallido-completed-spin.png`, no se sube)
 - Para jugar en Real Play hace falta sesión.
+- Cartera de Betsson: la web pide `/api/v2/wallet/balance` y responde `{"balance":{"totalAmount":59.5,"withdrawableAmount":59.5,"currencyCode":"EUR","lockedAmount":0.0,"bonusAmount":0.0},…}`. El importe va **en euros** (el tester lo pasa a céntimos) y la moneda **como código**. Con el juego abierto, los 59,50 € de la cartera coinciden con los `5950` céntimos de `updateBalance`. (15/10, pestaña Network)
 - Banner de cookies (OneTrust): «Configuración de cookies» (`#onetrust-pc-btn-handler`) → «Rechazarlas todas» (`.ot-pc-refuse-all-handler`). (15/10, prueba `lobby` en verde)
 - **Anti-bot: salta con el Chromium automatizado (headless, Docker) al enviar el login.** Mensaje: «Actualiza la página y vuelve a intentarlo en breve. La resolución puede demorar hasta 10 minutos.» Con el navegador normal no salta (lo vio el equipo). La página carga `eu.id.group-ib.com/id.html` (detección de fraude de Group-IB). No se intenta saltar: hay que pedir a los mentores una vía autorizada (lista blanca de IP, cabecera o cuenta marcada para el hackathon). (15/10, captura anterior)
 
@@ -29,7 +30,12 @@ Todo lo que sabemos de la web. Junto a cada dato, pon cómo lo sabes (una captur
 ## Dentro del juego
 
 - ¿Con qué está hecho (canvas, WebGL…)? Se ve en DevTools.
-- ¿Expone algo fuera del canvas (DOM, `window`, mensajes)?
+- ¿Expone algo fuera del canvas (DOM, `window`, mensajes)? **Sí: `postMessage` a la página de Betsson.** Con Bubble Up, cuenta con saldo y sin girar (15/10, consola del navegador):
+  - El juego se sirve desde `https://cajdsoitek.jmxyelekig.net` (dominio de Pragmatic Play) y se identifica con `"sender":"vs20bblup_cv116"` y `"lang":"ES"`.
+  - El nombre del evento llega en `"name"` (`gameLoadingEnded`) o en `"event"` (`loadingProgress`, `soundOn`). Algún mensaje trae los dos: `{"name":"post_updateBalance","event":"updateBalance",…}`.
+  - Al cargar llega `updateBalance` con el saldo **en céntimos** y la moneda como **símbolo**: `"params":{"total":{"currency":"€","amount":5950}}`. La cartera de Betsson usa el código (`EUR`), así que el tester convierte `€` → `EUR` antes de comparar.
+  - La petición `gameService` de la carga del juego responde 200. Sin girar no hay `doSpin`.
+  - El anti-bot (`https://eu.id.group-ib.com`, `"action":"gcfids"`) también manda `postMessage` cada pocos segundos; el tester lo ignora porque no es del juego.
 - Dónde está el botón de jugar:
 - Cómo se ve que una ronda ha terminado:
 - Errores que hemos visto:
