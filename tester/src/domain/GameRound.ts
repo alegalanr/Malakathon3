@@ -6,8 +6,10 @@ import {
   GameRound, type ActionRecord, type Cents, type RunConfig, type Scenario, type SpinRecord, type StandardEvent,
   type VisualReading, type WalletReading,
 } from '../contracts/schemas';
-import { SYMBOL_TO_CODE } from './Money';
+import type { RejectionVerdict } from '../scenario2/RejectionDetector';
 
+
+const SYMBOL_TO_CODE: Record<string, string> = { '€': 'EUR', 'S/': 'PEN' };
 /** C16 */
 export interface InitialState {
   betssonBefore?: WalletReading;
@@ -25,6 +27,8 @@ export interface RoundTrace {
   spins: SpinRecord[];
   outcome: 'settled' | 'rejected' | 'timeout';
   capture?: { path: string; t: number; triggerEvent: string };
+  /** Escenario 2: veredicto del detector de rechazo y borrador del contrato. */
+  rejection?: RejectionVerdict;
 }
 
 export interface RoundInputs {

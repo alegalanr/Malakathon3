@@ -5,6 +5,7 @@
  */
 import type { EventType, StandardEvent } from '../contracts/schemas';
 import { centsValue, currencyCode, eurosToCents } from '../domain/Money';
+import { rejectionReason } from '../scenario2/RejectionHypotheses';
 import { asObject, findKey, type ProviderAdapter, type RawMessage } from './ProviderAdapter';
 
 const MAP: Record<string, EventType> = {
@@ -44,9 +45,17 @@ export const PragmaticAdapter: ProviderAdapter = {
     const fromGame = (gameOrigin && msg.origin === gameOrigin) || (!!sender && /^vs/.test(sender)) || (!!name && PRAGMATIC_KNOWN.has(name));
     if (!name || !fromGame) return null;
 
-    const type: EventType = MAP[name] ?? 'UNKNOWN';
+    let type: EventType = MAP[name] ?? 'UNKNOWN';
     const eur = (k: string) => eurosToCents(findKey(o, k));
     const data: StandardEvent['data'] = {};
+    // Escenario 2: un mensaje que no es del catálogo y encaja con las hipótesis de rechazo (config/rejection-hypotheses.json)
+    if (type === 'UNKNOWN' && !PRAGMATIC_KNOWN.has(name)) {
+      const reason = rejectionReason(name, o ?? msg.data);
+      if (reason) {
+        type = 'REJECTED';
+        data.reason = reason;
+      }
+    }
     switch (type) {
       case 'ROUND_STARTED':
         data.bet = eur('betAmount');
@@ -64,7 +73,7 @@ export const PragmaticAdapter: ProviderAdapter = {
         const total = findKey(o, 'total');
         data.amount = centsValue(findKey(total ?? o, 'amount'));
         const cur = findKey(total ?? o, 'currency') ?? findKey(o, 'currency');
-        if (typeof cur === 'string') data.currency = currencyCode(cur);
+        if (typeof cur === 'string' && cur.trim()) data.currency = currencyCode(cur); // "€" → "EUR"
         break;
       }
     }

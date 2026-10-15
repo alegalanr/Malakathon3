@@ -3,6 +3,8 @@
  * y devuelve un RunReport (C14). NUNCA lanza excepción: si algo revienta, la fase queda "failed"
  * con su motivo, las siguientes de F1-F9 quedan "skipped" y F10-F12 se ejecutan siempre.
  */
+import fs from 'node:fs';
+import path from 'node:path';
 import type { BrowserContext, Page, TestInfo } from '@playwright/test';
 import type {
   ActionRecord, Check, Control, ControlMap, GameRound, PhaseId, PhaseStatus, RunConfig, RunReport, SessionState,
@@ -10,8 +12,10 @@ import type {
 } from '../contracts/schemas';
 import { ASSETS_DIR, CONTROL_MAPS_DIR, REPORTS_DIR } from '../config/RunConfig';
 import { buildGameRound, type InitialState, type RoundTrace } from '../domain/GameRound';
+import { extendedRoundSignals, scenarioPrecondition } from '../edge-cases/EdgeCases';
 import { Evidence } from '../evidence/Evidence';
-import { redactText } from '../evidence/redact';
+import { scrubScreenshots } from '../evidence/PrivacyScan';
+import { credentialValues, redact, redactText } from '../evidence/redact';
 import { loadControlMap, saveControlMap } from '../game/ControlMap';
 import { AssetCache } from '../game/AssetCache';
 import { GameEventBus } from '../game/GameEventBus';
@@ -23,6 +27,7 @@ import { PragmaticAdapter } from '../providers/PragmaticAdapter';
 import { buildRunReport } from '../report/Report';
 import { BetssonSite } from '../site/BetssonSite';
 import { BetssonWallet } from '../site/BetssonWallet';
+import { completeContract, detectRejection } from '../scenario2/RejectionDetector';
 import { completeChecks, evaluateChecks } from '../validation/rules';
 import { OcrEngine } from '../vision/OcrEngine';
 import { locateRois, readWords } from '../vision/RoiLocator';
@@ -41,6 +46,8 @@ const T = {
   rejectWatchMs: 8_000,
   walletS1Ms: 40_000,
   walletS2Ms: 35_000,
+  extendedRoundMs: 180_000, // free spins o bonus
+  quietMs: 15_000, // sin rondas nuevas durante este tiempo = la ronda extendida terminó
 };
 
 /** SOLUCION.md §14.5 */
@@ -111,6 +118,14 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
   const { page, context, cfg } = args;
   const startedAt = new Date().toISOString();
   const ev = new Evidence(REPORTS_DIR, `${cfg.market}-${cfg.scenario}`);
+  // Capturas de página completa: se tapan los datos de la cuenta (privacy.maskSelectors) y luego se
+  // revisan con OCR antes del informe (PrivacyScan). Las del recuadro del juego no los muestran.
+  const pageShots: string[] = [];
+  const capturePage = async (name: string, label: string, t?: number) => {
+    const c = await ev.capture(page, name, label, t, { mask: (cfg.privacy?.maskSelectors ?? []).map((sel) => page.locator(sel)) });
+    if (c) pageShots.push(c.path);
+    return c;
+  };
   const ctx: RunContext = { config: cfg, phases: [] };
   const ocr = new OcrEngine();
   const assets = new AssetCache(ASSETS_DIR);
@@ -158,7 +173,7 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
     }
     need(first, 'la cartera de Betsson no respondió: sesión no válida');
     need(first!.currency === cfg.currency, `mercado incorrecto: la cartera está en ${first!.currency}, se esperaba ${cfg.currency}`);
-    await ev.capture(page, 'casino', 'Casino con la sesión iniciada');
+    await capturePage('casino', 'Casino con la sesión iniciada');
     return ['session', 'wallet: primera lectura'];
   });
 
@@ -201,7 +216,7 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
     const dgoj = await site.handleGameSession((msg) => ev.log('note', 'sesión de juego DGOJ', msg));
     ev.log('note', 'sesión de juego DGOJ', dgoj);
     if (dgoj === 'blocked') {
-      await ev.capture(page, 'sesion-dgoj', 'Sesión de juego (DGOJ) pendiente');
+      await capturePage('sesion-dgoj', 'Sesión de juego (DGOJ) pendiente');
       throw new PhaseError('la sesión de juego (DGOJ) pide datos que el tester no sabe rellenar todavía');
     }
     const game = await findGameFrame(page, T.readyMs);
@@ -249,7 +264,13 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
   // ---------------------------------------------------------------- F5
   await phase('F5', 'Estado inicial', async () => {
     need(ctx.controls && ctx.game, 'faltan controls: F4 falló');
-    need(!bus.state.roundInProgress, 'hay una ronda en curso');
+    if (bus.state.roundInProgress) {
+      // Caso raro: el juego retoma una ronda pendiente al cargar. Se espera a que termine antes de leer el estado inicial.
+      ev.log('note', 'ronda pendiente', 'el juego tiene una ronda en curso al cargar: se espera a que termine');
+      await bus.tryWaitFor('ROUND_ENDED', { after: bus.last('ROUND_STARTED')?.t ?? 0, timeoutMs: T.roundEndMs });
+      await page.waitForTimeout(T.settleMs);
+    }
+    need(!bus.state.roundInProgress, 'hay una ronda en curso que no termina');
     // B0: la última lectura vale (desde F1 no se ha jugado nada); si es vieja, se espera un refresco
     // pasivo para recoger una ronda anterior reciente. No se recarga: cerraría el juego.
     let b0 = wallet.read();
@@ -294,6 +315,9 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
     need(b0, 'falta B0');
     need(currentBet !== undefined, 'apuesta actual desconocida: por prudencia no se gira');
     need(currentBet! <= cfg.maxBet, `apuesta por encima del máximo (${currentBet} > ${cfg.maxBet} céntimos): no se gira`);
+    const pre = scenarioPrecondition({ scenario: cfg.scenario, gameBalance: ctx.initial.gameBalance, walletBalance: b0!.amount, bet: currentBet });
+    ev.log('note', 'precondición de saldo', pre.reason);
+    need(pre.ok, pre.reason);
     if (ctx.initial.currency && ctx.initial.currency !== b0!.currency) ev.log('note', 'hallazgo', `moneda del juego ${ctx.initial.currency} ≠ cartera ${b0!.currency}`);
     if (ctx.initial.gameBalance !== b0!.amount) ev.log('note', 'hallazgo', `saldo del juego ${ctx.initial.gameBalance} ≠ cartera ${b0!.amount} (puede ser desfase de refresco)`);
     return ['initial'];
@@ -371,6 +395,21 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
         while (Date.now() < deadline && spin.collectBalance === undefined) await page.waitForTimeout(300);
       }
       await tap.settle();
+      const ext = extendedRoundSignals({ spins: tap.spinsBetween(action.t), calls: tap.calls.filter((c) => c.t >= action.t), events: bus.events.filter((e) => e.t >= action.t) });
+      if (ext.extended) {
+        // Caso raro: free spins o bonus. No se pulsa nada: se espera a que el juego termine solo (máx. 180 s)
+        // para no dejar una ronda a medias, y se informa. El tester valida rondas de una sola tirada.
+        ev.log('note', 'hallazgo', `ronda extendida (free spins o bonus): ${ext.reasons.join(' · ')}`, ext);
+        const deadline = action.t + T.extendedRoundMs;
+        let lastActivity = Date.now();
+        while (Date.now() < deadline && Date.now() - lastActivity < T.quietMs) {
+          await page.waitForTimeout(1000);
+          const latest = Math.max(...bus.events.map((e) => e.t), ...tap.spins.map((s) => s.t), 0);
+          if (latest > lastActivity) lastActivity = latest;
+        }
+        await ev.capture(game.element, 'extended-end', 'Fin de la ronda extendida (free spins o bonus)');
+        await tap.settle();
+      }
       ctx.trace = {
         action,
         events: bus.events.filter((e) => e.t >= action.t),
@@ -378,6 +417,7 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
         outcome: ended && spinEnded ? 'settled' : 'timeout',
         capture,
       };
+      need(!ext.extended, `ronda extendida (free spins o bonus): ${ext.reasons.join(' · ')}; se esperó a que terminara sin pulsar nada, pero el tester solo valida rondas de una tirada`);
       const starts = ctx.trace.events.filter((e) => e.type === 'ROUND_STARTED').length;
       need(starts <= 1, 'ronda duplicada: llegaron dos ROUND_STARTED');
       need(ctx.trace.outcome === 'settled', 'la ronda no llegó a resultShown a tiempo');
@@ -412,7 +452,11 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
       outcome: paid ? 'settled' : 'rejected',
       capture: c ? { path: c.path, t: c.t, triggerEvent: changedAt ? 'cambio de pantalla' : 'sin cambio' } : undefined,
     };
-    need(changedAt, 'no apareció ningún aviso tras el intento');
+    const verdict = detectRejection({ action, events, spins: ctx.trace.spins, calls: tap.calls.filter((x) => x.t >= action.t), screenChangedAt: changedAt });
+    ctx.trace.rejection = verdict;
+    ev.log('note', 'rechazo', `${verdict.outcome} (confianza ${verdict.confidence}): ${verdict.reasons.join(' · ')}`, verdict);
+    if (verdict.outcome === 'charged') ev.log('note', 'hallazgo', 'la tirada se cobró en el escenario 2');
+    need(verdict.outcome !== 'no-reaction', 'no hubo ninguna reacción tras el intento (ni aviso, ni evento, ni red)');
     return ['trace'];
   });
 
@@ -449,7 +493,7 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
     if (reloaded) ev.log('note', 'cartera', 'no se refrescó sola: se recargó la página como haría un jugador');
     need(reading && reading.t > ref, 'cartera no actualizada a tiempo');
     ctx.betssonAfter = reading!;
-    const c = await ev.capture(page, 'wallet-after', 'Betsson tras la ronda (B1)', reading!.t);
+    const c = await capturePage('wallet-after', 'Betsson tras la ronda (B1)', reading!.t);
     shots.wallet = c?.path;
     return ['betssonAfter'];
   });
@@ -458,6 +502,17 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
   await phase('F10', 'Ensamblado de la ronda', async () => {
     ctx.round = buildGameRound({ cfg, scenario: cfg.scenario, initial: ctx.initial, trace: ctx.trace, visual: ctx.visual ?? [], betssonAfter: ctx.betssonAfter });
     for (const f of ctx.round.findings) ev.log('note', 'hallazgo', f);
+    if (!s1 && ctx.trace?.rejection) {
+      // Contrato de rechazo (borrador): lo que se vio tras el intento, para confirmar config/rejection-hypotheses.json
+      const contract = completeContract(ctx.trace.rejection.contract, {
+        message: ctx.visual?.find((v) => v.field === 'message'),
+        gameBefore: ctx.initial?.gameBalance,
+        walletBefore: ctx.initial?.betssonBefore,
+        walletAfter: ctx.betssonAfter,
+      });
+      fs.writeFileSync(path.join(ev.dir, 'rejection-contract.json'), JSON.stringify(redact({ outcome: ctx.trace.rejection.outcome, confidence: ctx.trace.rejection.confidence, reasons: ctx.trace.rejection.reasons, signals: ctx.trace.rejection.signals, contract }), null, 2));
+      return ['round', 'rejection-contract'];
+    }
     return ['round'];
   }, { always: true });
 
@@ -471,6 +526,14 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
     const file = args.testInfo?.outputPath('trace.zip');
     await context.tracing.stop(file ? { path: file } : undefined).catch(() => {});
   }
+  // Privacidad: ninguna captura del informe puede enseñar el usuario o la contraseña
+  const privacy = await scrubScreenshots({ dir: ev.dir, files: ev.screenshots.map((x) => x.path), ocr, secrets: credentialValues(), pageShots });
+  for (const b of privacy.blurred) {
+    const shot = ev.screenshots.find((x) => x.path === b.path);
+    if (shot) shot.label += ' · difuminada por privacidad';
+    ev.log('note', 'privacidad', `${b.path}: ${b.reason}`);
+  }
+  if (privacy.checked) ev.log('note', 'privacidad', `${privacy.checked} captura(s) revisadas con OCR, ${privacy.blurred.length} difuminada(s)`);
   await ocr.terminate();
 
   await phase('F12', 'Evidencia e informe', async () => {

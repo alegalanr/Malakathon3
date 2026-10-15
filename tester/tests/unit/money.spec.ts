@@ -23,6 +23,16 @@ test('importes mostrados en pantalla según el mercado', () => {
   expect(parseDisplayedAmount('€', ES)).toBeNull();
 });
 
+test('pantalla: rechaza lo ambiguo en vez de adivinar', () => {
+  const STRICT = { ...ES, alwaysDecimals: true };
+  expect(parseDisplayedAmount('2.80 €', ES)).toBe(280); // coma leída como punto
+  expect(parseDisplayedAmount('2,8O €', ES)).toBe(280); // O leída en vez de 0
+  expect(parseDisplayedAmount('280 €', STRICT)).toBeNull(); // coma perdida: no son 280 €
+  expect(parseDisplayedAmount('2,80 € 3,00 €', ES)).toBeNull(); // dos importes
+  expect(parseDisplayedAmount('2,805 €', ES)).toBeNull(); // 3 decimales
+  expect(parseDisplayedAmount('1 €', ES)).toBe(100);
+});
+
 test('símbolo de moneda y formato', () => {
   expect(currencySymbolIn('4,00 €')).toBe('€');
   expect(currencySymbolIn('S/ 2.80')).toBe('S/');
@@ -38,8 +48,7 @@ test('moneda del juego («€») y de la cartera («EUR») se comparan por códi
   expect(currencyCode('eur')).toBe('EUR');
 });
 
-test('importe leído en pantalla con texto vecino: se toma el primero', () => {
-  expect(parseDisplayedAmount('4,00 € 3X', ES)).toBe(400);
+test('importe con texto vecino: varios números es ambiguo (null), la etiqueta no molesta', () => {
+  expect(parseDisplayedAmount('4,00 € 3X', ES)).toBeNull(); // ✔ recorte real de Bubble Up: ante la duda, null
   expect(parseDisplayedAmount('APUESTA 4,00 €', ES)).toBe(400);
-  expect(parseDisplayedAmount('1.234,56 € 2', ES)).toBe(123456);
 });

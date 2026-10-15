@@ -30,7 +30,12 @@ export const RunConfig = z.object({
   timezone: z.string(),
   currency: Currency,
   currencySymbol: z.string(),
-  numberFormat: z.object({ decimal: z.enum([',', '.']), thousands: z.enum([',', '.', ' ', '']) }),
+  numberFormat: z.object({
+    decimal: z.enum([',', '.']),
+    thousands: z.enum([',', '.', ' ', '']),
+    // El juego pinta siempre 2 decimales ("1,00 €"): un importe sin separador es una mala lectura
+    alwaysDecimals: z.boolean().optional(),
+  }),
   texts: z.object({ insufficientBalance: z.array(z.string()).min(1) }),
   game: z.object({ provider: z.literal('pragmatic'), name: z.string(), search: z.string(), path: z.string() }),
   maxBet: Cents,
@@ -42,6 +47,8 @@ export const RunConfig = z.object({
   }),
   // Las credenciales nunca se serializan: solo se guarda el nombre de las variables.
   credentialEnv: z.object({ userEnv: z.string(), passEnv: z.string() }),
+  // Zonas de la web de Betsson que se tapan en las capturas de página completa (nombre de la cuenta, perfil…)
+  privacy: z.object({ maskSelectors: z.array(z.string()) }).optional(),
 });
 export type RunConfig = z.infer<typeof RunConfig>;
 
@@ -82,6 +89,7 @@ export const SpinRecord = z.object({
   balanceAfterSpin: Cents.optional(),
   win: Cents.optional(), // tw
   needsCollect: z.boolean(), // na = c
+  nextAction: z.string().optional(), // na en bruto: s, c… (otro valor = free spins o bonus)
   collectBalance: Cents.optional(),
   status: z.number(),
   error: z.string().optional(),
