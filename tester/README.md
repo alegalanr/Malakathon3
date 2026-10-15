@@ -148,8 +148,8 @@ Al final dice si el flujo es genérico.
 | 1 | ⚠️ **Formulario de login** sin ver (en el navegador de pruebas `/inicio` no lo pinta) | `BetssonSite.login()` | Primera ejecución: si falla, `tester/.auth/login-fallido-*.png` (campos tapados) |
 | 2 | ⚠️ **Sesión de juego DGOJ**: solo se detecta e intenta confirmar | `handleGameSession()` | Qué pide y cómo se confirma |
 | 3 | ⚠️ **Botón de Real Play** o `?gameAction=play` | `launchRealPlay()` | Confirmarlo con sesión |
-| 4 | ⚠️ **Sobre de los mensajes postMessage** (dónde va el nombre): el adaptador lo busca en cualquier campo | `PragmaticAdapter` | Un mensaje real; los no reconocidos quedan en `timeline.jsonl` como `raw` |
-| 5 | ⚠️ **F3 exige `updateBalance`** para comprobar Real Play (saldo del juego = cartera) | `runScenario` F3 | Confirmar que llega al cargar |
+| 4 | ✔ **Sobre de los mensajes postMessage**: visto en real el 15/10. El nombre llega en `name` o en `event`, y la moneda como símbolo (`€`, que se convierte a `EUR`) | `PragmaticAdapter` | Hecho: `tests/unit/real-messages.spec.ts` y `docs/web-betsson.md` |
+| 5 | ✔ **F3 exige `updateBalance`**: llega al cargar el juego, con el saldo en céntimos (15/10) | `runScenario` F3 | Falta comprobar que coincide con la cartera en una ejecución completa |
 | 6 | ⚠️ **Zonas del OCR en el juego real** (fuente de Pragmatic, posición de APUESTA y `#rid`) | `RoiLocator`, `control-maps/` | Primera ejecución: recortes en `evidence/crop-*.png` |
 | 7 | **Escenario 2**: confirmar el contrato del rechazo. El detector y las hipótesis ya están; falta verlo en real | `config/rejection-hypotheses.json` y `rejection-contract.json` | Cuenta sin saldo: una ejecución real del escenario 2 |
 | 8 | **GitHub**: secrets `BETSSON_ES_*`, activar Pages (repo privado: depende del plan) y `RUNNER=self-hosted` si los runners no llegan a betsson.es | `.github/workflows/validate.yml` | Configurarlo en el repo |

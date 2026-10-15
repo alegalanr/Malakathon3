@@ -29,7 +29,12 @@ Todo lo que sabemos de la web. Junto a cada dato, pon cómo lo sabes (una captur
 ## Dentro del juego
 
 - ¿Con qué está hecho (canvas, WebGL…)? Se ve en DevTools.
-- ¿Expone algo fuera del canvas (DOM, `window`, mensajes)?
+- ¿Expone algo fuera del canvas (DOM, `window`, mensajes)? **Sí: `postMessage` a la página de Betsson.** Con Bubble Up, cuenta con saldo y sin girar (15/10, consola del navegador):
+  - El juego se sirve desde `https://cajdsoitek.jmxyelekig.net` (dominio de Pragmatic Play) y se identifica con `"sender":"vs20bblup_cv116"` y `"lang":"ES"`.
+  - El nombre del evento llega en `"name"` (`gameLoadingEnded`) o en `"event"` (`loadingProgress`, `soundOn`). Algún mensaje trae los dos: `{"name":"post_updateBalance","event":"updateBalance",…}`.
+  - Al cargar llega `updateBalance` con el saldo **en céntimos** y la moneda como **símbolo**: `"params":{"total":{"currency":"€","amount":5950}}`. La cartera de Betsson usa el código (`EUR`), así que el tester convierte `€` → `EUR` antes de comparar.
+  - La petición `gameService` de la carga del juego responde 200. Sin girar no hay `doSpin`.
+  - El anti-bot (`https://eu.id.group-ib.com`, `"action":"gcfids"`) también manda `postMessage` cada pocos segundos; el tester lo ignora porque no es del juego.
 - Dónde está el botón de jugar:
 - Cómo se ve que una ronda ha terminado:
 - Errores que hemos visto:

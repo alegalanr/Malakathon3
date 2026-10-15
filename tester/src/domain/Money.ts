@@ -44,6 +44,17 @@ export function parseDisplayedAmount(text: string, fmt: NumberFormat): Cents | n
   return Number.isFinite(cents) ? cents : null;
 }
 
+/**
+ * Moneda como código ISO. El juego real manda el símbolo (updateBalance: "currency":"€", visto en
+ * betsson.es el 15/10) y la cartera el código ("EUR"): se compara siempre como código.
+ */
+export function currencyCode(v: string): string {
+  const s = v.trim();
+  if (s === '€' || /^eur$/i.test(s)) return 'EUR';
+  if (/^S\s*\/$/.test(s) || /^pen$/i.test(s)) return 'PEN';
+  return s.toUpperCase();
+}
+
 export function currencySymbolIn(text: string): string | undefined {
   if (/S\s*\//.test(text)) return 'S/';
   if (/€/.test(text)) return '€';
