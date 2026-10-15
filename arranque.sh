@@ -6,16 +6,19 @@
 #   bash arranque.sh            # instalar + tests + modo simulado
 #   bash arranque.sh --mixed    # además, la demo con fallos provocados
 #   bash arranque.sh --real     # además, el escenario 1 contra betsson.es (dinero real)
+#   bash arranque.sh --landing  # además, deja abierta la landing / centro de control en http://localhost:8095
 set -euo pipefail
 cd "$(dirname "$0")"
 
 MIXED=0
 REAL=0
+LANDING=0
 for a in "$@"; do
   case "$a" in
     --mixed) MIXED=1 ;;
     --real) REAL=1 ;;
-    *) echo "Opción desconocida: $a (usa --mixed o --real)"; exit 2 ;;
+    --landing) LANDING=1 ;;
+    *) echo "Opción desconocida: $a (usa --mixed, --real o --landing)"; exit 2 ;;
   esac
 done
 
@@ -82,6 +85,18 @@ if [ "$REAL" = 1 ]; then
   [ "$ok" = "SI" ] || fail 'Cancelado.'
   tester tester npx playwright test tests/completed-spin.spec.ts --project=es || true
   echo 'Revisa a mano las capturas de tester/reports/es-completed-spin/evidence/ antes de compartir nada.'
+fi
+
+if [ "$LANDING" = 1 ]; then
+  step 'Centro de control (landing): validación en directo contra la maqueta local'
+  docker compose -f tester/compose.yaml up -d control || fail 'No se pudo arrancar el centro de control (¿puertos 8090, 8091 u 8095 ocupados?)'
+  for _ in $(seq 1 30); do
+    if command -v curl >/dev/null 2>&1; then curl -fs -o /dev/null http://localhost:8095/ && break; else sleep 3; break; fi
+    sleep 1
+  done
+  echo 'Abierto en http://localhost:8095  (para pararlo: docker compose -f tester/compose.yaml stop control mock)'
+  if command -v xdg-open >/dev/null 2>&1; then xdg-open http://localhost:8095 >/dev/null 2>&1 || true
+  elif command -v open >/dev/null 2>&1; then open http://localhost:8095 || true; fi
 fi
 
 printf '\n\033[32m✔ Listo.\033[0m\n'
