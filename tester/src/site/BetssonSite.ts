@@ -138,23 +138,112 @@ export class BetssonSite {
   }
 
   /**
-   * ⚠️ Sesión de juego obligatoria (DGOJ): ventana con límites antes de jugar. Se detecta y se confirma
-   * con los valores que traiga por defecto; si exige rellenar algo, se devuelve 'blocked' con captura.
+   * Sesión de juego obligatoria (DGOJ). ✔ (15/10) Al abrir el juego sin sesión de juego, el recuadro muestra
+   * «El juego no se inicia · Se requiere una sesión de juego activa» con «Iniciar una nueva sesión», y unos
+   * 5 s después sale encima la ventana «Atención» («Hace menos de 60 mins. que finalizaste tu sesión de juego»)
+   * con «Iniciar sesión» / «Volver a Casino». Se pulsa como un jugador; si después sale un formulario de
+   * límites, se rellena (ver fillSessionLimits). Localizadores por rol: atraviesan el shadow DOM.
    */
-  async handleGameSession(): Promise<'none' | 'confirmed' | 'blocked'> {
-    const dialog = this.page
-      .locator('[role="dialog"], fds-modal, fds-dialog, dialog')
-      .filter({ hasText: /sesi[oó]n de juego|l[ií]mite de (tiempo|gasto|p[eé]rdida)/i })
-      .first();
-    if (!(await visible(dialog, 6000))) return 'none';
-    const confirm = dialog
-      .locator('fds-button, button')
-      .filter({ hasText: /empezar|iniciar|comenzar|continuar|jugar|aceptar|confirmar/i })
-      .first();
-    if (await visible(confirm, 2000)) {
-      await confirm.click();
-      if (!(await visible(dialog, 4000))) return 'confirmed';
+  async handleGameSession(log: (msg: string) => void = () => {}): Promise<'none' | 'confirmed' | 'blocked'> {
+    const attention = this.page.getByRole('dialog').filter({ hasText: /sesi[oó]n de juego/i });
+    const attentionStart = attention.getByRole('button', { name: /^\s*iniciar sesi[oó]n\s*$/i });
+    const newSession = this.page.getByRole('button', { name: /iniciar una nueva sesi[oó]n/i });
+    const required = this.page.getByText(/se requiere una sesi[oó]n de juego/i);
+
+    // La ventana «Atención» tarda unos segundos: se espera a ella o a que el juego arranque sin pedir nada
+    const deadline = Date.now() + 20_000;
+    let sawRequired = false;
+    let clicked = false;
+    while (Date.now() < deadline) {
+      if (await visible(attentionStart, 1000)) {
+        log('ventana «Atención» de sesión de juego: «Iniciar sesión»');
+        await attentionStart.first().click();
+        clicked = true;
+        break;
+      }
+      sawRequired ||= await visible(required, 500);
+      if (!sawRequired && (await this.hasGameFrame())) return 'none';
+      // Sin ventana «Atención» tras 8 s: el botón del propio recuadro
+      if (sawRequired && Date.now() > deadline - 12_000 && (await visible(newSession, 500))) {
+        log('«Se requiere una sesión de juego activa»: «Iniciar una nueva sesión»');
+        await newSession.first().click();
+        clicked = true;
+        break;
+      }
+    }
+    if (!clicked) return sawRequired ? 'blocked' : 'none';
+
+    // Tras el clic: o arranca el juego, o sale el formulario de límites de la sesión
+    const until = Date.now() + 30_000;
+    let filled = false;
+    while (Date.now() < until) {
+      if ((await this.hasGameFrame()) && !(await visible(required, 300))) return 'confirmed';
+      if (!filled && (await this.fillSessionLimits(log))) {
+        filled = true;
+        continue;
+      }
+      // La ventana «Atención» puede volver a salir si el primer clic no bastó
+      if (await visible(attentionStart, 300)) await attentionStart.first().click();
+      await this.page.waitForTimeout(1000);
     }
     return 'blocked';
+  }
+
+  /** Hay un iframe grande (el juego) en la página. */
+  private async hasGameFrame(): Promise<boolean> {
+    const frames = this.page.locator('iframe');
+    const n = await frames.count();
+    for (let i = 0; i < n; i++) {
+      const b = await frames.nth(i).boundingBox().catch(() => null);
+      if (b && b.width > 300 && b.height > 200) return true;
+    }
+    return false;
+  }
+
+  /**
+   * ⚠️ Formulario de límites de la sesión de juego (sin ver todavía): en el diálogo abierto se eligen los
+   * límites más bajos que ofrezca (primera opción de cada desplegable y de cada grupo de opciones) y, en los
+   * campos vacíos, GAME_SESSION_MINUTES (30) para el tiempo y GAME_SESSION_LIMIT (10 €) para el importe.
+   * Después se pulsa el botón de empezar. Todo queda en el registro.
+   */
+  private async fillSessionLimits(log: (msg: string) => void): Promise<boolean> {
+    const dialog = this.page
+      .getByRole('dialog')
+      .filter({ has: this.page.locator('input:not([type="hidden"]), select') })
+      .filter({ visible: true })
+      .first();
+    if (!(await visible(dialog, 500))) return false;
+    const text = (await dialog.innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 300);
+    log(`formulario de sesión de juego: «${text}»`);
+
+    const selects = dialog.locator('select').filter({ visible: true });
+    for (let i = 0; i < (await selects.count()); i++) {
+      const s = selects.nth(i);
+      if (await s.inputValue().catch(() => '')) continue;
+      const values = await s.locator('option').evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value).filter(Boolean));
+      if (values[0]) await s.selectOption(values[0]);
+    }
+    const radios = dialog.locator('input[type="radio"]').filter({ visible: true });
+    if ((await radios.count()) && !(await dialog.locator('input[type="radio"]:checked').count())) await radios.first().check();
+    const inputs = dialog.locator('input[type="number"], input[type="text"], input:not([type])').filter({ visible: true });
+    for (let i = 0; i < (await inputs.count()); i++) {
+      const input = inputs.nth(i);
+      if (await input.inputValue().catch(() => '')) continue;
+      const label = `${await input.getAttribute('aria-label')} ${await input.getAttribute('name')} ${await input.getAttribute('placeholder')}`;
+      const isTime = /min|tiempo|time|duraci/i.test(label);
+      await input.fill(isTime ? process.env.GAME_SESSION_MINUTES ?? '30' : process.env.GAME_SESSION_LIMIT ?? '10');
+      log(`campo «${label.replace(/null/g, '').trim()}» = ${isTime ? 'minutos' : 'importe'}`);
+    }
+    const start = dialog
+      .getByRole('button', { name: /iniciar|empezar|comenzar|continuar|jugar|aceptar|confirmar|guardar/i })
+      .filter({ visible: true })
+      .first();
+    if (!(await visible(start, 2000))) {
+      log('formulario de sesión de juego sin botón para empezar');
+      return false;
+    }
+    log(`pulsado «${(await start.innerText().catch(() => '')).trim()}»`);
+    await start.click();
+    return true;
   }
 }

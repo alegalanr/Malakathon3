@@ -166,8 +166,10 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
     const how = await site.searchGame();
     ev.log('note', 'juego', `«${cfg.game.search}» abierto por ${how}`);
     ev.log('note', 'Real Play', await site.launchRealPlay());
-    const dgoj = await site.handleGameSession();
-    if (dgoj !== 'none') ev.log('note', 'sesión de juego DGOJ', dgoj);
+    // El banner de cookies vuelve a salir en la página del juego y tapa la barra inferior (apuesta)
+    ev.log('note', 'cookies (juego)', await site.rejectCookies());
+    const dgoj = await site.handleGameSession((msg) => ev.log('note', 'sesión de juego DGOJ', msg));
+    ev.log('note', 'sesión de juego DGOJ', dgoj);
     if (dgoj === 'blocked') {
       await ev.capture(page, 'sesion-dgoj', 'Sesión de juego (DGOJ) pendiente');
       throw new PhaseError('la sesión de juego (DGOJ) pide datos que el tester no sabe rellenar todavía');

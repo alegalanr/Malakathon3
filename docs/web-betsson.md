@@ -40,3 +40,4 @@ Todo lo que sabemos de la web. Junto a cada dato, pon cómo lo sabes (una captur
 | Juego | Proveedor | ¿Demo sin login? | ¿Carga? | Notas |
 |-------|-----------|------------------|---------|-------|
 |       |           |                  |         |       |
+- **Sesión de juego obligatoria (DGOJ).** Con la sesión de Betsson iniciada, al abrir un juego en Real Play (`?gameAction=play`) el recuadro muestra «El juego no se inicia · Se requiere una sesión de juego activa para jugar» con «Iniciar una nueva sesión». Unos 5 s después sale encima la ventana «Atención» («Hace menos de 60 mins. que finalizaste tu sesión de juego…») con «Iniciar sesión» y «Volver a Casino». Lo que sale después de pulsar «Iniciar sesión» (¿formulario de límites?) está sin ver. El banner de cookies vuelve a salir en la página del juego y tapa la parte de abajo del juego. (15/10, traza del tester y captura del equipo)
