@@ -66,3 +66,12 @@ export const AUTH_DIR = path.join(__dirname, '..', '..', '.auth');
 export const authFile = (market: MarketId, scenario: Scenario) => path.join(AUTH_DIR, `${market}-${scenario}.json`);
 export const REPORTS_DIR = path.join(__dirname, '..', '..', 'reports');
 export const CONTROL_MAPS_DIR = path.join(__dirname, '..', '..', 'control-maps');
+
+/** Hay una sesión guardada con cookies (login automático o hecho a mano). */
+export function hasSession(file: string): boolean {
+  try {
+    return (JSON.parse(fs.readFileSync(file, 'utf8')).cookies ?? []).length > 0;
+  } catch {
+    return false;
+  }
+}

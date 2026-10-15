@@ -7,6 +7,7 @@
     "ui": "playwright test --ui-host=0.0.0.0 --ui-port=8080",
     "unit": "SKIP_LOGIN=1 playwright test --project=unit",
     "smoke": "SKIP_LOGIN=1 playwright test --project=lobby",
+    "login": "node scripts/manual-login.mjs",
     "merge": "node scripts/merge-reports.mjs downloaded site",
     "scan": "node scripts/scan-secrets.mjs site",
     "report": "playwright show-report --host 0.0.0.0 --port 9323",

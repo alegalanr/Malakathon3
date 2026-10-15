@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import { expect, test } from '@playwright/test';
 import type { Scenario } from '../src/contracts/schemas';
-import { authFile, loadRunConfig, marketFromEnv, readCredentials, runMode } from '../src/config/RunConfig';
+import { authFile, hasSession, loadRunConfig, marketFromEnv, readCredentials, runMode } from '../src/config/RunConfig';
 import { runScenario } from '../src/scenarios/runScenario';
 import { simulateScenario } from '../src/scenarios/simulateScenario';
 import { writeRunReport } from '../src/report/Report';
@@ -19,9 +19,12 @@ export function scenarioTest(scenario: Scenario) {
   test(`${scenario} · ${market} · ${mode}`, async ({ page, context }, testInfo) => {
     const cfg = loadRunConfig(market, scenario, mode);
     // Sin credenciales no hay nada que probar en real: se salta con el motivo en vez de dar FAIL en cadena
+    // Sin credenciales ni sesión iniciada a mano no hay nada que probar en real: se salta con el motivo
     test.skip(
-      mode === 'real' && !readCredentials(cfg),
-      `Faltan ${cfg.credentialEnv.userEnv} y ${cfg.credentialEnv.passEnv} (en tester/.env o en el .env de la raíz del repo)`,
+      mode === 'real' && (process.env.LOGIN_MODE === 'manual' ? !hasSession(state) : !readCredentials(cfg) && !hasSession(state)),
+      process.env.LOGIN_MODE === 'manual'
+        ? `No hay sesión iniciada a mano: docker compose -f tester/compose.yaml run --rm login ${scenario}`
+        : `Faltan ${cfg.credentialEnv.userEnv}/${cfg.credentialEnv.passEnv} o una sesión iniciada a mano (LOGIN_MODE=manual)`,
     );
     const report = mode === 'real' ? await runScenario({ page, context, cfg, testInfo }) : await simulateScenario({ page, cfg });
     const { dir, secrets, contractErrors } = writeRunReport(report, cfg);

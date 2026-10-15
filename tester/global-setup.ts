@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import { chromium } from '@playwright/test';
 import type { Scenario } from './src/contracts/schemas';
-import { AUTH_DIR, authFile, loadRunConfig, marketFromEnv, readCredentials, runMode } from './src/config/RunConfig';
+import { AUTH_DIR, authFile, hasSession, loadRunConfig, marketFromEnv, readCredentials, runMode } from './src/config/RunConfig';
 import { BetssonSite } from './src/site/BetssonSite';
 
 const EMPTY = JSON.stringify({ cookies: [], origins: [] });
@@ -17,6 +17,14 @@ export default async function globalSetup() {
   const scenarios: Scenario[] = ['completed-spin', 'insufficient-balance'];
   if (runMode() === 'simulated' || process.env.SKIP_LOGIN === '1') {
     for (const s of scenarios) fs.writeFileSync(authFile(market, s), EMPTY);
+    return;
+  }
+  if (process.env.LOGIN_MODE === 'manual') {
+    // La sesión la inició una persona con `scripts/manual-login.mjs`: se reutiliza tal cual
+    for (const s of scenarios) {
+      if (hasSession(authFile(market, s))) console.log(`Sesión iniciada a mano para ${s}: se reutiliza.`);
+      else console.warn(`⚠️  ${s}: no hay sesión guardada. Ejecuta: docker compose -f tester/compose.yaml run --rm login ${s}`);
+    }
     return;
   }
   for (const scenario of scenarios) {

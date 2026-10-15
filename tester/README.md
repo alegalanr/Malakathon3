@@ -25,6 +25,19 @@ Todo en Docker (imagen oficial de Playwright); en el host no se instala nada.
    docker compose -f tester/compose.yaml up
    ```
 
+### Login hecho por una persona (si el login automático lo bloquea el anti-bot)
+
+El login automático lo bloquea la web («Actualiza la página y vuelve a intentarlo…», ver `docs/web-betsson.md`). Sin saltarse nada: inicias sesión tú en un navegador visible y el tester reutiliza esa sesión. El tester no modifica el navegador ni oculta que está automatizado; si la web bloquea también la sesión automatizada, F1 se para con el motivo.
+
+```bash
+xhost +SI:localuser:$USER                                   # una vez: deja que Docker use tu pantalla
+docker compose -f tester/compose.yaml run --rm login         # se abre el navegador: inicia sesión tú
+docker compose -f tester/compose.yaml run --rm -e LOGIN_MODE=manual tester npx playwright test --project=es tests/completed-spin.spec.ts
+xhost -SI:localuser:$USER                                   # al terminar
+```
+
+La sesión se guarda en `tester/.auth/es-completed-spin.json` (no se sube). Para el escenario 2: `… run --rm login insufficient-balance`. Si la sesión caduca, se repite el login.
+
 Otros comandos (`docker compose -f tester/compose.yaml run --rm tester …`):
 
 | Comando | Qué hace |

@@ -26,3 +26,20 @@ services:
       - "127.0.0.1:9323:9323"   # informe HTML
     ipc: host                   # Chromium necesita más memoria compartida
     command: npm run ui
+
+  # Login hecho por una persona en un navegador visible (usa tu pantalla). Una vez por sesión gráfica:
+  #   xhost +SI:localuser:$USER        (se deshace con: xhost -SI:localuser:$USER)
+  #   docker compose -f tester/compose.yaml run --rm login [completed-spin|insufficient-balance]
+  login:
+    image: mcr.microsoft.com/playwright:v1.56.0-noble
+    working_dir: /work
+    user: "1000:1000"
+    environment:
+      HOME: /tmp/home
+      DISPLAY: ${DISPLAY:-:0}
+    volumes:
+      - .:/work
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    ipc: host
+    profiles: [login]
+    entrypoint: ["node", "scripts/manual-login.mjs"]
