@@ -22,10 +22,18 @@ async function visible(l: Locator, timeout = 1500): Promise<boolean> {
 const loginButton = (page: Page) => page.locator('fds-button').filter({ hasText: /^\s*Iniciar sesi[oó]n\s*$/i });
 
 export class BetssonSite {
+  /** Última petición al lanzador de juegos de Betsson (sin guardar la URL: lleva el token de sesión). */
+  private launcher?: { forReal: boolean; t: number };
+
   constructor(
     private page: Page,
     private cfg: RunConfig,
-  ) {}
+  ) {
+    page.on('request', (r) => {
+      const u = r.url();
+      if (/\/api\/v\d+\/Gamelauncher\//i.test(u)) this.launcher = { forReal: new URL(u).searchParams.get('forReal') === 'true', t: Date.now() };
+    });
+  }
 
   async openCasino() {
     await this.page.goto(this.cfg.baseUrl + this.cfg.casinoPath, { waitUntil: 'domcontentloaded' });
@@ -121,6 +129,11 @@ export class BetssonSite {
    * Nunca se pulsa un botón de demo / jugar gratis.
    */
   async launchRealPlay(): Promise<string> {
+    // ✔ (15/10) Con sesión, la página del juego ya lo lanza en Real Play (Gamelauncher forReal=true):
+    // recargar con ?gameAction=play solo reiniciaba la carga (~30 MB) desde cero.
+    const since = Date.now() - 15_000;
+    for (let i = 0; i < 12 && !(this.launcher && this.launcher.t >= since); i++) await this.page.waitForTimeout(500);
+    if (this.launcher && this.launcher.t >= since && this.launcher.forReal) return 'Real Play directo (lanzador con forReal=true)';
     const real = this.page
       .locator('fds-button, button')
       .filter({ hasText: /^\s*(jugar|jugar ahora|jugar con dinero real|play|play now)\s*$/i })
@@ -138,23 +151,94 @@ export class BetssonSite {
   }
 
   /**
-   * ⚠️ Sesión de juego obligatoria (DGOJ): ventana con límites antes de jugar. Se detecta y se confirma
-   * con los valores que traiga por defecto; si exige rellenar algo, se devuelve 'blocked' con captura.
+   * Sesión de juego obligatoria (DGOJ). ✔ (15/10) Al abrir el juego sin sesión de juego, el recuadro muestra
+   * «El juego no se inicia · Se requiere una sesión de juego activa» con «Iniciar una nueva sesión», y unos
+   * 5 s después sale encima la ventana «Atención» («Hace menos de 60 mins. que finalizaste tu sesión de juego»)
+   * con «Iniciar sesión» / «Volver a Casino». Se pulsa como un jugador; si después sale el formulario de
+   * límites, se rellena (ver fillSessionLimits). Localizadores por rol: atraviesan el shadow DOM.
    */
-  async handleGameSession(): Promise<'none' | 'confirmed' | 'blocked'> {
-    const dialog = this.page
-      .locator('[role="dialog"], fds-modal, fds-dialog, dialog')
-      .filter({ hasText: /sesi[oó]n de juego|l[ií]mite de (tiempo|gasto|p[eé]rdida)/i })
-      .first();
-    if (!(await visible(dialog, 6000))) return 'none';
-    const confirm = dialog
-      .locator('fds-button, button')
-      .filter({ hasText: /empezar|iniciar|comenzar|continuar|jugar|aceptar|confirmar/i })
-      .first();
-    if (await visible(confirm, 2000)) {
-      await confirm.click();
-      if (!(await visible(dialog, 4000))) return 'confirmed';
+  async handleGameSession(log: (msg: string) => void = () => {}): Promise<'none' | 'confirmed' | 'blocked'> {
+    const attention = this.page.getByRole('dialog').filter({ hasText: /sesi[oó]n de juego/i });
+    const attentionStart = attention.getByRole('button', { name: /^\s*iniciar sesi[oó]n\s*$/i });
+    const newSession = this.page.getByRole('button', { name: /iniciar una nueva sesi[oó]n/i });
+    const required = this.page.getByText(/se requiere una sesi[oó]n de juego/i);
+
+    // La ventana «Atención» tarda unos segundos: se espera a ella o a que el juego arranque sin pedir nada
+    const deadline = Date.now() + 20_000;
+    let sawRequired = false;
+    let clicked = false;
+    while (Date.now() < deadline) {
+      if (await visible(attentionStart, 1000)) {
+        log('ventana «Atención» de sesión de juego: «Iniciar sesión»');
+        await attentionStart.first().click();
+        clicked = true;
+        break;
+      }
+      sawRequired ||= await visible(required, 500);
+      if (!sawRequired && (await this.hasGameFrame())) return 'none';
+      // Sin ventana «Atención» tras 8 s: el botón del propio recuadro
+      if (sawRequired && Date.now() > deadline - 12_000 && (await visible(newSession, 500))) {
+        log('«Se requiere una sesión de juego activa»: «Iniciar una nueva sesión»');
+        await newSession.first().click();
+        clicked = true;
+        break;
+      }
+    }
+    if (!clicked) return sawRequired ? 'blocked' : 'none';
+
+    // Tras el clic: o arranca el juego, o sale el formulario de límites de la sesión
+    const until = Date.now() + 30_000;
+    let attempts = 0;
+    while (Date.now() < until) {
+      if ((await this.hasGameFrame()) && !(await visible(required, 300))) return 'confirmed';
+      // Hasta 3 intentos: si el formulario sigue abierto (validación), se vuelve a rellenar
+      if (attempts < 3 && (await this.fillSessionLimits(log))) {
+        attempts++;
+        await this.page.waitForTimeout(2000);
+        continue;
+      }
+      // La ventana «Atención» puede volver a salir si el primer clic no bastó
+      if (await visible(attentionStart, 300)) await attentionStart.first().click();
+      await this.page.waitForTimeout(1000);
     }
     return 'blocked';
+  }
+
+  /** Hay un iframe grande (el juego) en la página. */
+  private async hasGameFrame(): Promise<boolean> {
+    const frames = this.page.locator('iframe');
+    const n = await frames.count();
+    for (let i = 0; i < n; i++) {
+      const b = await frames.nth(i).boundingBox().catch(() => null);
+      if (b && b.width > 300 && b.height > 200) return true;
+    }
+    return false;
+  }
+
+  /**
+   * ✔ (15/10) Formulario de la sesión de juego («Se ha sobrepasado el límite de tiempo de sesión»):
+   * «Tiempo de juego» con botones (15 Min … 5 Horas), «Límite de pérdidas» con campo y botones de
+   * porcentaje del saldo (25 % … 100 %) y «Iniciar sesión». Se elige GAME_SESSION_TIME («5 Horas») y
+   * GAME_SESSION_LOSS («100%»), lo que decidió el equipo para la cuenta de prueba.
+   * NUNCA se toca «Más opciones»: ahí está el «Tiempo de exclusión», que autoexcluye la cuenta y no se puede deshacer.
+   */
+  private async fillSessionLimits(log: (msg: string) => void): Promise<boolean> {
+    const dialog = this.page.getByRole('dialog').filter({ hasText: /tiempo de juego/i }).filter({ visible: true }).first();
+    if (!(await visible(dialog, 500))) return false;
+    const time = process.env.GAME_SESSION_TIME ?? '5 Horas';
+    const loss = process.env.GAME_SESSION_LOSS ?? '100%';
+    const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const timeButton = dialog.getByRole('button', { name: new RegExp(`^\\s*${esc(time)}\\s*$`, 'i') });
+    const lossButton = dialog.getByRole('button', { name: new RegExp(`^\\s*${esc(loss)}`, 'i') });
+    const start = dialog.getByRole('button', { name: /^\s*iniciar sesi[oó]n\s*$/i });
+    if (!(await visible(timeButton, 2000)) || !(await visible(lossButton, 2000)) || !(await visible(start, 2000))) {
+      log(`formulario de sesión de juego sin «${time}», «${loss}» o «Iniciar sesión»: no se rellena`);
+      return false;
+    }
+    await timeButton.first().click();
+    await lossButton.first().click();
+    log(`formulario de sesión de juego: tiempo «${time}», límite de pérdidas «${loss}» → «Iniciar sesión»`);
+    await start.first().click();
+    return true;
   }
 }

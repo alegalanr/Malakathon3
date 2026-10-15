@@ -5,6 +5,7 @@
  * Se lee la barra con dos preprocesados distintos y se juntan las palabras: con uno solo, las anclas
  * pequeñas o con brillo se pierden a menudo.
  */
+import sharp from 'sharp';
 import type { Roi, RunConfig } from '../contracts/schemas';
 import { fixDigitConfusions } from '../domain/Money';
 import type { OcrEngine } from './OcrEngine';
@@ -91,6 +92,35 @@ export async function locateRois(ocr: OcrEngine, gamePng: Buffer, cfg: RunConfig
     out.rid = rel({ x0: r.x0 - pad, y0: r.y0 - pad, x1: r.x1 + pad * 2, y1: r.y1 + pad }, '#');
   }
   return out;
+}
+
+/** Mayúsculas sin tildes (para reconocer palabras de pantalla). */
+const upper = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+
+export interface TextHit {
+  text: string;
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/**
+ * Palabras visibles en todo el recuadro del juego, en píxeles del recuadro (OCR ×2 en grises: el texto
+ * de las pantallas de Pragmatic es pequeño). Sirve para reconocer pantallas («VOLATILIDAD» = intro).
+ */
+export async function readWords(ocr: OcrEngine, gamePng: Buffer): Promise<{ W: number; H: number; words: TextHit[] }> {
+  const meta = await sharp(gamePng).metadata();
+  const W = meta.width!;
+  const H = meta.height!;
+  const scale = 2;
+  const img = await sharp(gamePng).grayscale().resize({ width: W * scale }).normalize().png().toBuffer();
+  const { words } = await ocr.recognize(img, { mode: 'sparse' });
+  return {
+    W,
+    H,
+    words: words.map((w) => ({ text: upper(w.text), x0: w.bbox.x0 / scale, y0: w.bbox.y0 / scale, x1: w.bbox.x1 / scale, y1: w.bbox.y1 / scale })),
+  };
 }
 
 /** Zona central del juego, donde salen las ventanas de aviso. */

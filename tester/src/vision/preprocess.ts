@@ -17,6 +17,11 @@ export interface Variant {
 }
 
 export const VARIANTS: Variant[] = [
+  // ✔ (15/10, Bubble Up real, sin conexión sobre capturas de la ronda) La barra inferior tiene texto claro y
+  // pequeño (rid de ~8 px) sobre un fondo que 'auto' no ve oscuro: invertido y sin umbral, ×8 y ×5, lee
+  // «4,00 €» con confianza 0,90 y el rid casi entero; con umbral fijo se perdía.
+  { name: 'x8-invertido', scale: 8, threshold: null, invert: 'yes' },
+  { name: 'x5-invertido', scale: 5, threshold: null, invert: 'yes' },
   { name: 'x4-gris', scale: 4, threshold: null, invert: 'auto' },
   { name: 'x3-umbral', scale: 3, threshold: 150, invert: 'auto' },
   { name: 'x5-gris', scale: 5, threshold: null, invert: 'auto' },

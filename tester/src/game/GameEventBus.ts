@@ -21,6 +21,8 @@ type Waiter = { type: EventType; after: number; where?: (e: StandardEvent) => bo
 export class GameEventBus {
   readonly events: StandardEvent[] = [];
   readonly state = { ready: false, roundInProgress: false, currentBet: undefined as number | undefined, lastBalance: undefined as number | undefined, lastCurrency: undefined as string | undefined, sender: undefined as string | undefined };
+  /** Carga del juego (loadingProgress): porcentaje y cuándo avanzó por última vez. */
+  readonly loading = { percent: 0, advancedAt: 0 };
   private waiters: Waiter[] = [];
   private active = false;
   gameOrigin?: string;
@@ -57,6 +59,8 @@ export class GameEventBus {
   }
 
   ingest(msg: RawMessage) {
+    // loadingProgress llega cientos de veces por carga: solo se registran los hitos (25/50/75/100 %)
+    if (this.trackLoading(msg)) return;
     const e = this.adapter.translate(msg, this.gameOrigin);
     if (!e) {
       this.ev.log('raw', 'message', msg.origin, msg.data, msg.t);
@@ -73,6 +77,44 @@ export class GameEventBus {
       }
       return true;
     });
+  }
+
+  /** true si el mensaje era loadingProgress (ya tratado). */
+  private trackLoading(msg: RawMessage): boolean {
+    let o: unknown = msg.data;
+    if (typeof o === 'string') {
+      if (!o.includes('loadingProgress')) return false;
+      try {
+        o = JSON.parse(o);
+      } catch {
+        return false;
+      }
+    }
+    const m = o as { event?: string; params?: { percentage?: number } } | null;
+    if (m?.event !== 'loadingProgress') return false;
+    const p = m.params?.percentage;
+    if (typeof p === 'number' && p > this.loading.percent) {
+      const milestone = [25, 50, 75, 100].find((x) => this.loading.percent < x && p >= x);
+      this.loading.percent = p;
+      this.loading.advancedAt = msg.t;
+      if (milestone) this.ev.log('event', 'carga', `${p} %`, undefined, msg.t);
+    }
+    return true;
+  }
+
+  /**
+   * READY, esperando mientras la carga avance: falla si la carga se queda parada `stallMs`
+   * o si se pasa de `maxMs` en total. Con la web real la carga tarda de 40 s a más de 100 s.
+   */
+  async waitForReady(opts: { stallMs: number; maxMs: number }): Promise<StandardEvent> {
+    const start = Date.now();
+    for (;;) {
+      const ready = await this.tryWaitFor('READY', { timeoutMs: 5000 });
+      if (ready) return ready;
+      const lastProgress = Math.max(this.loading.advancedAt, start);
+      if (Date.now() - lastProgress > opts.stallMs) throw new Error(`la carga del juego se paró en el ${this.loading.percent} % (${Math.round(opts.stallMs / 1000)} s sin avanzar)`);
+      if (Date.now() - start > opts.maxMs) throw new Error(`el juego no terminó de cargar en ${Math.round(opts.maxMs / 1000)} s (iba por el ${this.loading.percent} %)`);
+    }
   }
 
   private apply(e: StandardEvent) {

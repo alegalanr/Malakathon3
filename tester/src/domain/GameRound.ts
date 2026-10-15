@@ -8,6 +8,8 @@ import {
 } from '../contracts/schemas';
 import type { RejectionVerdict } from '../scenario2/RejectionDetector';
 
+
+const SYMBOL_TO_CODE: Record<string, string> = { '€': 'EUR', 'S/': 'PEN' };
 /** C16 */
 export interface InitialState {
   betssonBefore?: WalletReading;
@@ -38,7 +40,6 @@ export interface RoundInputs {
   betssonAfter?: WalletReading;
 }
 
-const SYMBOL_TO_CODE: Record<string, string> = { '€': 'EUR', 'S/': 'PEN' };
 
 export function buildGameRound(inp: RoundInputs): GameRound {
   const ev = (type: StandardEvent['type']) => inp.trace?.events.filter((e) => e.type === type) ?? [];

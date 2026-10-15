@@ -16,7 +16,19 @@ export default async function globalSetup() {
   const market = marketFromEnv();
   const scenarios: Scenario[] = ['completed-spin', 'insufficient-balance'];
   if (runMode() === 'simulated' || process.env.SKIP_LOGIN === '1') {
-    for (const s of scenarios) fs.writeFileSync(authFile(market, s), EMPTY);
+    // Sin pisar una sesión guardada (p. ej. la del login manual): los tests unitarios la borraban
+    for (const s of scenarios) if (!fs.existsSync(authFile(market, s))) fs.writeFileSync(authFile(market, s), EMPTY);
+    return;
+  }
+  if (process.env.MANUAL_LOGIN === '1') {
+    // Login manual (scripts/save-session.mjs): se reutiliza la sesión guardada y no se envía ningún formulario
+    for (const s of scenarios) {
+      if (fs.existsSync(authFile(market, s))) console.log(`${s}: se reutiliza la sesión iniciada a mano`);
+      else {
+        console.warn(`⚠️  ${s}: no hay sesión guardada (node tester/scripts/save-session.mjs ${market} ${s}); ese escenario fallará en F1.`);
+        fs.writeFileSync(authFile(market, s), EMPTY);
+      }
+    }
     return;
   }
   for (const scenario of scenarios) {
