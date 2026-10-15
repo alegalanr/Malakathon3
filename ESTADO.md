@@ -55,6 +55,13 @@ Qué funciona y quién está con cada parte. Cada agente actualiza **solo su sec
 - **Cómo:** `bot/run.py` encadena las etapas con una sesión de Playwright compartida (`bot/browser.py`) y escribe `runs/<run_id>/` con el formato de [docs/diseno.md](docs/diseno.md) (`bot/evidence.py`). Docker con la imagen oficial de Playwright y un casino simulado (`mock_casino/`) para ensayar. Las 5 etapas tienen una primera versión funcional en `bot/stages/` para que cada responsable la tome y la mejore. Detalle en [docs/arquitectura-esqueleto.md](docs/arquitectura-esqueleto.md).
 - **Evidencia:** contra el casino simulado (fuera de Docker): flujo completo PASS; FAIL provocado bloqueando el proveedor (falla en `launch`) y bloqueando la petición de jugada (falla en `play`); cada etapa ejecutada sola. Pendiente: repetirlo en Docker con esta estructura, probar con la web real y con la IA real.
 
+## Tester TS: escenario 1 en betsson.es
+
+- **Estado:** 🟡
+- **Quién:** Alejandro
+- **Cómo:** `tester/` (TypeScript + Playwright Test en Docker), siguiendo `SOLUCION.md` del equipo: login sin traza, buscar Bubble Up, Real Play, Espacio + `gameRoundStarted`, eventos + red + cartera, comprobaciones P1, S1.1–S1.5 y R1. Decisiones, opciones y pendientes en [tester/README.md](tester/README.md).
+- **Evidencia:**
+
 ## Pitch
 
 - **Estado:** ⬜

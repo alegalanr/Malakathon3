@@ -1,0 +1,9 @@
+# Secretos: credenciales y sesión iniciada (contiene cookies de login)
+.env
+.auth/
+
+# Salidas
+node_modules/
+test-results/
+playwright-report/
+evidence/

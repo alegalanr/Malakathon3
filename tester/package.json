@@ -1,0 +1,18 @@
+{
+  "name": "betsson-game-tester",
+  "private": true,
+  "description": "Validador de juegos de Pragmatic Play en Betsson: escenario 1 (tirada completada)",
+  "scripts": {
+    "test": "playwright test",
+    "ui": "playwright test --ui-host=0.0.0.0 --ui-port=8080",
+    "smoke": "playwright test --project=lobby",
+    "report": "playwright show-report --host 0.0.0.0 --port 9323",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.0",
+    "@types/node": "^22.10.0",
+    "dotenv": "^16.4.5",
+    "typescript": "^5.6.3"
+  }
+}
