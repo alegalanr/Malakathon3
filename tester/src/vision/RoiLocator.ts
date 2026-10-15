@@ -67,5 +67,31 @@ export async function locateRois(ocr: OcrEngine, gamePng: Buffer, cfg: RunConfig
   return out;
 }
 
+export interface TextHit {
+  text: string;
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/**
+ * Palabras visibles en todo el recuadro del juego, en píxeles del recuadro (OCR ×2 en grises: el texto
+ * de las pantallas de Pragmatic es pequeño). Sirve para reconocer pantallas («VOLATILIDAD» = intro).
+ */
+export async function readWords(ocr: OcrEngine, gamePng: Buffer): Promise<{ W: number; H: number; words: TextHit[] }> {
+  const meta = await sharp(gamePng).metadata();
+  const W = meta.width!;
+  const H = meta.height!;
+  const scale = 2;
+  const img = await sharp(gamePng).grayscale().resize({ width: W * scale }).normalize().png().toBuffer();
+  const { words } = await ocr.recognize(img, { mode: 'sparse' });
+  return {
+    W,
+    H,
+    words: words.map((w) => ({ text: norm(w.text), x0: w.bbox.x0 / scale, y0: w.bbox.y0 / scale, x1: w.bbox.x1 / scale, y1: w.bbox.y1 / scale })),
+  };
+}
+
 /** Zona central del juego, donde salen las ventanas de aviso. */
 export const MESSAGE_ROI: Roi = { rx: 0.12, ry: 0.18, rw: 0.76, rh: 0.64, anchor: 'centro' };

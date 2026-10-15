@@ -24,7 +24,7 @@ import { BetssonSite } from '../site/BetssonSite';
 import { BetssonWallet } from '../site/BetssonWallet';
 import { completeChecks, evaluateChecks } from '../validation/rules';
 import { OcrEngine } from '../vision/OcrEngine';
-import { locateRois } from '../vision/RoiLocator';
+import { locateRois, readWords } from '../vision/RoiLocator';
 import { ScreenWitness } from '../vision/ScreenWitness';
 
 const VIEWPORT = { width: 1366, height: 768 };
@@ -62,19 +62,45 @@ interface RunContext {
 class PhaseError extends Error {}
 
 /**
- * Pantalla de introducción de Pragmatic (p. ej. Bubble Up: «No volver a mostrar» + flecha de continuar):
- * tapa la barra inferior, así que no se puede leer la apuesta. Se pasa como un jugador, con un clic en el
- * centro (fuera del botón de spin). Nunca con Espacio: sin intro, Espacio lanzaría una tirada con dinero real.
+ * Pantalla de introducción de Pragmatic. ✔ (15/10, Bubble Up) Es un carrusel con «VOLATILIDAD ALTA»,
+ * la casilla «NO VOLVER A MOSTRAR» y un botón redondo de continuar justo encima de la volatilidad;
+ * tapa la barra inferior (apuesta). Un clic en el centro solo pasa de diapositiva.
+ * Se reconoce por OCR («VOLATILIDAD») y SOLO entonces se hace clic: sin intro, esa zona puede ser el
+ * botón de spin. Se marca «No volver a mostrar» (como haría un jugador) y se pulsa continuar.
+ * Nunca con Espacio: sin intro, Espacio lanzaría una tirada con dinero real.
  */
-async function dismissIntro(page: Page, game: GameHandle, ev: Evidence) {
-  const before = await game.element.screenshot().catch(() => null);
+async function dismissIntro(page: Page, game: GameHandle, ev: Evidence, ocr: OcrEngine) {
   const box = await game.element.boundingBox();
-  if (!before || !box) return;
-  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5, { delay: 60 });
-  await page.waitForTimeout(T.settleMs + 1000);
-  const after = await game.element.screenshot().catch(() => null);
-  const changed = after ? changedFraction(before, after) : 0;
-  ev.log('action', 'intro', changed > 0.12 ? `clic en el centro: la pantalla cambió (${Math.round(changed * 100)} %), intro cerrada` : `clic en el centro: sin cambios (${Math.round(changed * 100)} %), no había intro o no se cerró`);
+  if (!box) return;
+  if (!ocr.ready) {
+    ev.log('note', 'intro', 'sin OCR no se puede reconocer la intro: no se toca');
+    return;
+  }
+  const click = async (x: number, y: number, W: number, H: number) =>
+    page.mouse.click(box.x + (x / W) * box.width, box.y + (y / H) * box.height, { delay: 60 });
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const png = await game.element.screenshot().catch(() => null);
+    if (!png) return;
+    const { W, H, words } = await readWords(ocr, png);
+    const vol = words.find((w) => /^VOLATIL/.test(w.text));
+    if (!vol) {
+      ev.log('screen', 'intro', attempt === 0 ? 'sin pantalla de introducción' : 'intro cerrada');
+      return;
+    }
+    if (attempt === 0) {
+      const no = words.find((w, i) => w.text === 'NO' && /^VOLVER/.test(words[i + 1]?.text ?? ''));
+      if (no) {
+        const h = no.y1 - no.y0;
+        await click(no.x0 - h * 1.4, (no.y0 + no.y1) / 2, W, H);
+        ev.log('action', 'intro', 'marcada «No volver a mostrar»');
+      }
+    }
+    // Botón de continuar: centrado sobre «VOLATILIDAD», un 16 % del alto por encima
+    await click((vol.x0 + vol.x1) / 2, vol.y0 - H * 0.16, W, H);
+    ev.log('action', 'intro', `clic en continuar (intento ${attempt + 1})`);
+    await page.waitForTimeout(T.settleMs + 1000);
+  }
+  ev.log('note', 'intro', 'la pantalla de introducción no se cerró tras 4 intentos');
 }
 const need = (cond: unknown, msg: string) => {
   if (!cond) throw new PhaseError(msg);
@@ -183,7 +209,7 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
       throw new PhaseError(`el juego no emitió READY (gameLoadingEnded): ${e.message}`);
     });
     await page.waitForTimeout(T.settleMs); // pantalla tranquila: sin animación de entrada a medias
-    await dismissIntro(page, game!, ev);
+    await dismissIntro(page, game!, ev, ocr);
     const png = await game!.element.screenshot();
     need(pixelStd(png) > 6, 'el juego no se renderiza (recuadro en negro o en blanco)');
     game!.sender = bus.state.sender;
@@ -223,16 +249,30 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
     if (b0 && Date.now() - b0.t > 30_000) b0 = (await wallet.waitForChange(b0.t, T.walletS2Ms)) ?? b0;
     const idle = await ev.capture(ctx.game!.element, 'idle', 'Juego en reposo (F5)');
     shots.idle = idle?.path;
+    // Apuesta antes de girar (precondición de prudencia, no un check): evento → red (doInit) → pantalla.
+    // La pantalla se lee siempre que se pueda para contrastar.
     let currentBet = bus.state.currentBet;
     let betSource = 'evento BET_CHANGED';
-    if (currentBet === undefined && idle && ocr.ready) {
-      // Sin betChanged al cargar: la apuesta seleccionada se lee en pantalla (testigo visual)
+    await tap.settle();
+    if (currentBet === undefined && tap.init) {
+      currentBet = tap.init.bet;
+      betSource = `red (doInit: c=${tap.init.coin} × l=${tap.init.lines})`;
+    }
+    if (idle && ocr.ready) {
       const w = new ScreenWitness(ocr, ev.dir);
       const { readings } = await w.read({ capture: { png: idle.png, t: idle.t, triggerEvent: 'reposo' }, fields: ['bet'], rois: ctx.controls!.rois, config: cfg });
       const r = readings[0];
       if (typeof r.value === 'number' && r.confidence >= cfg.ocr.minConfidence) {
-        currentBet = r.value;
-        betSource = `pantalla («${r.raw}»)`;
+        if (currentBet === undefined) {
+          currentBet = r.value;
+          betSource = `pantalla («${r.raw}»)`;
+        } else if (r.value !== currentBet) {
+          ev.log('note', 'hallazgo', `apuesta en pantalla ${r.value} («${r.raw}») ≠ ${currentBet} de ${betSource}`);
+        } else {
+          betSource += ` = pantalla («${r.raw}»)`;
+        }
+      } else {
+        ev.log('screen', 'apuesta (reposo)', `sin lectura fiable en pantalla («${r.raw}», confianza ${r.confidence.toFixed(2)})`);
       }
     }
     ctx.initial = {
