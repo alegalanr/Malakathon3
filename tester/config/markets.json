@@ -61,7 +61,7 @@
   "ocr": {
     "languages": ["eng", "spa"],
     "minConfidence": 0.6,
-    "maxAttempts": 6,
+    "maxAttempts": 7,
     "anchors": { "bet": ["APUESTA", "BET"], "rid": ["#"] }
   }
 }

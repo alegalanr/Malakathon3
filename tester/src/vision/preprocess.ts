@@ -25,6 +25,8 @@ export const VARIANTS: Variant[] = [
   { name: 'x4-gris', scale: 4, threshold: null, invert: 'auto' },
   { name: 'x3-umbral', scale: 3, threshold: 150, invert: 'auto' },
   { name: 'x5-gris', scale: 5, threshold: null, invert: 'auto' },
+  // ✔ (15/10) Gris ×5-×10 lee la apuesta de Bubble Up en todas las capturas reales (3,20 € y 4,00 €): segunda lectura.
+  { name: 'x7-gris', scale: 7, threshold: null, invert: 'auto' },
   { name: 'x3-umbral-invertido', scale: 3, threshold: 150, invert: 'yes' },
 ];
 
