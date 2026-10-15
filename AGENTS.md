@@ -2,12 +2,12 @@
 
 ## Proyecto
 
-Hackathon (reto de Betsson). Construimos un bot que entra en la web de Betsson, detecta un juego nuevo en el lobby, lo abre, juega una ronda en el canvas, hace capturas y da un veredicto PASS/FAIL con su motivo. Somos varias personas trabajando en paralelo, cada una con su agente.
+Hackathon (reto de Betsson). Construimos un bot que prueba, como lo haría un jugador, un juego de Pragmatic Play en Real Play en betsson.com y betsson.pe: un spin que se completa y otro que se rechaza por saldo insuficiente. Da PASS/FAIL de cada comprobación leyendo la pantalla y cuadrando los saldos, con capturas, traza y vídeo como evidencia, y se ejecuta en GitHub Actions. Somos varias personas trabajando en paralelo, cada una con su agente.
 
 - [ESTADO.md](ESTADO.md): qué funciona y quién está con cada parte.
 - [docs/diseno.md](docs/diseno.md): etapas, módulos, formato de `run.json` y decisiones tomadas.
 - [docs/web-betsson.md](docs/web-betsson.md): lo que sabemos de la web.
-- [docs/reto.md](docs/reto.md): el enunciado.
+- [docs/reto.md](docs/reto.md): el enunciado oficial, las comprobaciones de cada escenario y cómo se puntúa. Es la referencia de qué cuenta como hecho.
 - `pitch/`: material de la presentación. No lo toques salvo que la tarea sea el pitch.
 
 ## Flujo de trabajo
@@ -40,8 +40,8 @@ Hackathon (reto de Betsson). Construimos un bot que entra en la web de Betsson, 
 
 ## Nunca
 
-- **Jugar con dinero real.** Solo modo demo o el entorno que dé la organización. Si un juego exige apostar dinero real, para y avisa.
-- **Poner credenciales** en código, prompts, logs o capturas. Las de prueba van en `.env`, que no se sube.
+- **Jugar con dinero real fuera de las cuentas de prueba de Betsson.** El reto exige Real Play, pero solo con esas cuentas: nunca con una cuenta personal ni haciendo depósitos. Si algo pide dinero real de otra forma, para y avisa.
+- **Poner credenciales** en código, prompts, logs, capturas, trazas, vídeos ni informes. Las de prueba van en `.env` en local y en los secrets de GitHub en el workflow; ninguno de los dos se sube.
 - **Saltarte CAPTCHAs o protecciones anti-bot.** Si aparece una, apúntala en `docs/web-betsson.md` y avisa.
 - **Decir que algo funciona sin haberlo ejecutado.**
 
@@ -50,5 +50,6 @@ Hackathon (reto de Betsson). Construimos un bot que entra en la web de Betsson, 
 - Todo se ejecuta en Docker; no se instala nada en el host.
 - Un módulo por etapa (ver `docs/diseno.md`). Cada etapa tiene que poder ejecutarse sola con una entrada fija, para que nadie dependa de que funcionen las anteriores.
 - Antes que IA, código determinista (selectores, API del lobby, tráfico de red). La IA con visión solo se usa donde no hay más remedio.
+- Las comprobaciones se demuestran con lo que ve el jugador (pantalla, OCR o visión). El tráfico de red sirve para contrastar, no como prueba única: así lo puntúa el criterio "Ve como un jugador" de [docs/reto.md](docs/reto.md#evaluación).
 - Cada ejecución escribe `runs/<run_id>/` con el formato de `docs/diseno.md`; esa carpeta no se sube.
 - No subas ficheros de más de 2 MB.
