@@ -1,6 +1,6 @@
 # Arranque desde cero
 
-Para ejecutar el tester en un ordenador que nunca ha tenido el proyecto. **No se instala nada más que Git y Docker**: Node, los navegadores, el OCR y sus datos van dentro de la imagen oficial de Playwright y de `npm ci`.
+Para ejecutar el tester en un ordenador que nunca ha tenido el proyecto. **No se instala nada más que Git y Docker**: Node, los navegadores, el OCR y sus datos van dentro de la imagen oficial de Playwright y de `npm ci`. Solo las ejecuciones contra betsson.es (`-DryRun` / `-Real`) usan además **Edge o Chrome y Node 22 o superior** del ordenador, para el login manual.
 
 ## 1. Requisitos
 
@@ -51,7 +51,8 @@ Opciones:
 | Windows | macOS / Linux | Qué añade |
 |---|---|---|
 | `-Mixed` | `--mixed` | Demo con fallos provocados: **debe fallar**, solo en `S1-RID-VISIBLE` y `S2-MSG-LANG-VISIBLE`. El script comprueba que falla |
-| `-Real` | `--real` | Escenario 1 contra betsson.es con la cuenta de prueba. **Mueve dinero real** de la cuenta de prueba y pide confirmación |
+| `-DryRun` | `--dry-run` | Los dos escenarios contra betsson.es **sin apostar**: sesión, sesión de juego DGOJ, carga, intro y apuesta (hasta F5). Para comprobar que todo está listo |
+| `-Real` | `--real` | Ensayo sin apostar y, si sale bien, **escenario 1 real** (una tirada con dinero real; pide confirmación) y **escenario 2 real** con la cuenta sin saldo (no gasta: si hay saldo para la apuesta, no gira) |
 | `-Landing` | `--landing` | Deja abierta la **landing / centro de control** en <http://localhost:8095>: el validador en directo contra la maqueta local, con fallos provocados (ver abajo) |
 
 ## 4. Landing y centro de control (la demo)
@@ -81,10 +82,16 @@ Va contra la maqueta local (`tester/mock/`) en **modo real**: mismo código que 
 
 ## 6. Ejecución real (solo con las cuentas de prueba de Betsson)
 
-1. Rellena `tester/.env` con las cuentas de prueba (`BETSSON_ES_USER`, `BETSSON_ES_PASS` y, para el escenario 2, `BETSSON_ES_EMPTY_USER`, `BETSSON_ES_EMPTY_PASS`). **Nunca una cuenta personal.**
-2. Ejecuta el script con `-Real` / `--real`.
-3. **No lances dos ejecuciones reales a la vez** con la misma cuenta (en CI y en local, o en dos ordenadores): los saldos no cuadrarían y se gastaría dinero de más.
-4. Antes de compartir nada, **revisa a mano las capturas** de `tester/reports/es-*/evidence/`. Hay máscaras y una revisión automática, pero los selectores de la web no se han podido comprobar todavía con sesión.
+El login contra betsson.es es **siempre manual**: el anti-bot de Group-IB bloquea el login automatizado y los mentores indican que se haga a mano. No hace falta poner credenciales en `tester/.env`.
+
+1. Ejecuta el script con `-Real` / `--real`, o con `-DryRun` / `--dry-run` para ensayar sin apostar.
+2. Para cada cuenta de prueba sin sesión guardada, el script abre el navegador con un perfil aparte. **Inicia sesión a mano**: primero con la cuenta **con saldo** y después con la cuenta **sin saldo**. Cuando veas el casino, pulsa Enter en el script, que guarda la sesión en `tester/.auth/` (no se sube). Las siguientes veces la reutiliza. Si caduca, borra el fichero y vuelve a ejecutar. **Nunca una cuenta personal.**
+3. El script hace primero un **ensayo sin apostar** de los dos escenarios. Si no llega a F5, se para sin gastar nada.
+4. Escenario 1: pide escribir `SI` antes de la tirada con dinero real. Escenario 2: no gasta.
+5. **No lances dos ejecuciones reales a la vez** con la misma cuenta (en CI y en local, o en dos ordenadores): los saldos no cuadrarían y se gastaría dinero de más.
+6. Antes de compartir nada, **revisa a mano las capturas** de `tester/reports/es-*/evidence/`.
+
+Sin el script, lo mismo a mano: [tester/README.md](tester/README.md). Los comandos contra la web real llevan **siempre** `-e MANUAL_LOGIN=1`. Sin él, el tester intenta el login automatizado: salta el anti-bot y vacía la sesión guardada.
 
 ## 7. Problemas habituales
 
@@ -101,6 +108,9 @@ Va contra la maqueta local (`tester/mock/`) en **modo real**: mismo código que 
 | La descarga de la imagen se queda parada | Comprueba la conexión, o un proxy o VPN. Vuelve a ejecutar: retoma la descarga |
 | Avisos `npm notice New major version of npm` o `npm audit` | Se pueden ignorar. **No ejecutes `npm audit fix --force`**: cambia versiones y puede romper el tester |
 | Los tests del OCR tardan la primera vez | Es normal: carga los datos de idioma |
+| `Para guardar la sesión del login manual hace falta Node 22` | Instala Node 22 o superior: solo se usa para guardar la sesión del navegador |
+| El ensayo dice «sesión no iniciada» en F1 | La sesión ha caducado: borra `tester/.auth/es-<escenario>.json` y vuelve a ejecutar para iniciarla a mano |
+| Al iniciar sesión sale «Actualiza la página y vuelve a intentarlo en breve» | Es el anti-bot: inicia sesión en la ventana que abre el script (un navegador normal), no en el del tester |
 
 ## Comandos sueltos (lo mismo que hace el script)
 
@@ -113,6 +123,10 @@ docker compose -f tester/compose.yaml run --rm -e RUN_MODE=simulated tester npx 
 docker compose -f tester/compose.yaml run --rm -e RUN_MODE=simulated -e SIMULATION=mixed tester npx playwright test --project=es
 docker compose -f tester/compose.yaml up -d control   # landing / centro de control → http://localhost:8095
 docker compose -f tester/compose.yaml up        # modo UI de Playwright → http://localhost:8080
+# contra betsson.es (tras guardar las sesiones con el login manual):
+docker compose -f tester/compose.yaml run --rm -e MANUAL_LOGIN=1 -e DRY_RUN=1 tester npx playwright test --project=es   # ensayo sin apostar
+docker compose -f tester/compose.yaml run --rm -e MANUAL_LOGIN=1 tester npx playwright test --project=es tests/completed-spin.spec.ts
+docker compose -f tester/compose.yaml run --rm -e MANUAL_LOGIN=1 tester npx playwright test --project=es tests/insufficient-balance.spec.ts
 ```
 
 Más detalle del tester en [tester/README.md](tester/README.md).
