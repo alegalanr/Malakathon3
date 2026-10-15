@@ -110,3 +110,4 @@ Para abrir la traza: `npx playwright show-trace runs/<run_id>/trace.zip`, o arra
 | 14/10 | `console_errors` cuenta solo las excepciones JavaScript no capturadas desde que se abre el juego | Las webs reales llenan la consola de `console.error` que no tienen que ver con el juego | Contar todos los `console.error` |
 | 14/10 | Cookies: rechazar las no esenciales; aceptar solo si no hay forma de rechazar | Privacidad, y es lo que haría un usuario prudente | Aceptar siempre |
 | 14/10 | Casino simulado (`mock_casino/`) para ensayar | Permite probar PASS y FAIL provocados de forma reproducible sin depender de la web real | — |
+| 15/10 | Login manual: una persona inicia sesión en un navegador normal y el tester reutiliza la sesión guardada (`MANUAL_LOGIN=1`) | El anti-bot de Group-IB bloquea el login automatizado y los mentores indican que se haga a mano | Esquivar la detección (esperas, ocultar la automatización): no se saltan protecciones anti-bot |

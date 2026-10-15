@@ -9,6 +9,7 @@ Todo lo que sabemos de la web. Junto a cada dato, pon cómo lo sabes (una captur
 - Para jugar en Real Play hace falta sesión.
 - Banner de cookies (OneTrust): «Configuración de cookies» (`#onetrust-pc-btn-handler`) → «Rechazarlas todas» (`.ot-pc-refuse-all-handler`). (15/10, prueba `lobby` en verde)
 - **Anti-bot: salta con el Chromium automatizado (headless, Docker) al enviar el login.** Mensaje: «Actualiza la página y vuelve a intentarlo en breve. La resolución puede demorar hasta 10 minutos.» Con el navegador normal no salta (lo vio el equipo). La página carga `eu.id.group-ib.com/id.html` (detección de fraude de Group-IB). No se intenta saltar: hay que pedir a los mentores una vía autorizada (lista blanca de IP, cabecera o cuenta marcada para el hackathon). (15/10, captura anterior)
+  - **Vía autorizada por los mentores (15/10): login manual.** Una persona inicia sesión a mano en un navegador normal y el tester reutiliza la sesión (`tester/scripts/save-session.mjs` + `MANUAL_LOGIN=1`). El bot no envía el formulario de login.
 
 ## Lobby
 
