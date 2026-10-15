@@ -118,7 +118,7 @@ function gamePage(req, url, slug) {
   const src = `http://${host(req)}:${GAME_PORT}/game?symbol=${senderOf(game[1])}&game=${encodeURIComponent(game[0])}&mgckey=AUTHTOKEN@${token}&lang=es&cur=EUR`;
   req.extraScript = `<script>
 function openGame(){document.getElementById('slot').innerHTML='<iframe id="game" src="${src}"></iframe>'}
-function dgoj(){document.body.insertAdjacentHTML('beforeend','<div class="modal" id="dgoj" role="dialog"><div class="card"><h3>Sesión de juego</h3><p>Límite de tiempo: 60 min · Límite de gasto: 50 €</p><fds-button class="primary" id="start">Empezar</fds-button></div></div>');
+function dgoj(){document.body.insertAdjacentHTML('beforeend','<div class="modal" id="dgoj" role="dialog"><div class="card"><h3>Atención</h3><p>Se requiere una sesión de juego activa. Límite de tiempo: 60 min · Límite de gasto: 50 €</p><button type="button" class="btn primary" id="start">Iniciar sesión</button></div></div>');
 document.getElementById('start').onclick=()=>{document.getElementById('dgoj').remove();openGame()}}
 document.getElementById('play')?.addEventListener('click',dgoj);
 if(new URLSearchParams(location.search).get('gameAction')==='play'&&${!!user})dgoj();
