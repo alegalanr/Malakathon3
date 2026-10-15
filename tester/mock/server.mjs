@@ -23,6 +23,7 @@ const accounts = {
   [process.env.MOCK_USER ?? 'qa-demo']: { pass: process.env.MOCK_PASS ?? 'mock-1234', balance: 10000 },
   [process.env.MOCK_EMPTY_USER ?? 'qa-empty']: { pass: process.env.MOCK_EMPTY_PASS ?? 'mock-1234', balance: 50 },
 };
+const BOOT = Date.now(); // cambia en cada arranque: las sesiones viven en memoria
 const INITIAL = Object.fromEntries(Object.entries(accounts).map(([u, a]) => [u, a.balance]));
 const sessions = new Map(); // cookie → usuario
 const tokens = new Map(); // token del juego (mgckey) → usuario
@@ -42,10 +43,20 @@ const host = (req) => (req.headers.host ?? `localhost:${SITE_PORT}`).split(':')[
 const GAMES = [
   ['Bubble Up', 'bubble-up', 'Pragmatic Play'],
   ['Sweet Bonanza', 'sweet-bonanza', 'Pragmatic Play'],
+  ['Gates of Olympus', 'gates-of-olympus', 'Pragmatic Play'],
   ['Big Bass Splash', 'big-bass-splash', 'Pragmatic Play'],
+  ['Sugar Rush', 'sugar-rush', 'Pragmatic Play'],
+  ['Wolf Gold', 'wolf-gold', 'Pragmatic Play'],
+  ['The Dog House', 'the-dog-house', 'Pragmatic Play'],
+  ['Starlight Princess', 'starlight-princess', 'Pragmatic Play'],
   ['Starburst', 'starburst', 'NetEnt'],
   ['Book of Dead', 'book-of-dead', "Play'n GO"],
 ];
+const slugify = (n) => n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const titleOf = (slug) => slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+/** Cualquier juego por nombre: los del lobby y, si no está, uno de Pragmatic Play con ese nombre. */
+const gameBySlug = (slug) => GAMES.find((g) => g[1] === slug) ?? [titleOf(slug), slug, 'Pragmatic Play'];
+const senderOf = (slug) => 'vs20' + slug.replace(/-/g, '').slice(0, 10) + '_mock';
 
 function layout(req, content, title) {
   const user = userOf(req);
@@ -101,10 +112,10 @@ ${error ? `<div class="error">${error}</div>` : ''}
 
 function gamePage(req, url, slug) {
   const user = userOf(req);
-  const game = GAMES.find((g) => g[1] === slug) ?? GAMES[0];
+  const game = gameBySlug(slug);
   const token = user ? crypto.randomBytes(8).toString('hex') : '';
   if (user) tokens.set(token, user);
-  const src = `http://${host(req)}:${GAME_PORT}/game?symbol=${SENDER}&mgckey=AUTHTOKEN@${token}&lang=es&cur=EUR`;
+  const src = `http://${host(req)}:${GAME_PORT}/game?symbol=${senderOf(game[1])}&game=${encodeURIComponent(game[0])}&mgckey=AUTHTOKEN@${token}&lang=es&cur=EUR`;
   req.extraScript = `<script>
 function openGame(){document.getElementById('slot').innerHTML='<iframe id="game" src="${src}"></iframe>'}
 function dgoj(){document.body.insertAdjacentHTML('beforeend','<div class="modal" id="dgoj" role="dialog"><div class="card"><h3>Sesión de juego</h3><p>Límite de tiempo: 60 min · Límite de gasto: 50 €</p><fds-button class="primary" id="start">Empezar</fds-button></div></div>');
@@ -120,6 +131,8 @@ ${user ? '<p><fds-button class="primary" id="play">Jugar</fds-button> <fds-butto
 http
   .createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
+    if (url.pathname === '/__games') return send(res, 200, 'application/json', JSON.stringify(GAMES.map(([name, slug, provider]) => ({ name, slug, provider }))));
+    if (url.pathname === '/__boot') return send(res, 200, 'application/json', JSON.stringify({ boot: BOOT }));
     if (url.pathname === '/__mock' && req.method === 'POST') {
       for (const k of ['win', 'bug']) if (url.searchParams.has(k)) mode[k] = url.searchParams.get(k);
       if (url.searchParams.has('reset')) for (const [u, b] of Object.entries(INITIAL)) accounts[u].balance = b;
@@ -147,25 +160,30 @@ http
   .listen(SITE_PORT, () => console.log(`Betsson (maqueta) en :${SITE_PORT}`));
 
 // ------------------------------------------------------------------------------------------- Proveedor
-function gameHtml(user) {
+function gameHtml(user, name = 'Bubble Up', sender = SENDER) {
   const bal = accounts[user]?.balance ?? 0;
+  // Colores propios por juego, para que se note qué juego se está probando
+  const h = [...name].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 360, 7);
+  const pal = [0, 55, 110, 200, 280].map((d) => `hsl(${(h + d) % 360} 70% 55%)`);
   return `<!doctype html><html><body style="margin:0;background:#000;overflow:hidden"><canvas id="c" width="1100" height="620"></canvas><script>
 const c=document.getElementById('c'),x=c.getContext('2d');
-const P=(event,params={})=>parent.postMessage({event,sender:'${SENDER}',params},'*');
+const P=(event,params={})=>parent.postMessage({event,sender:'${sender}',params},'*');
+const NAME=${JSON.stringify(name)},PAL=${JSON.stringify(pal)};
 const BET=${BET.c * BET.l};let bal=${bal}/100,state='loading',reels=[0,1,2,3,4],rid='',win=0,shownWin=0,lastWin=0,lastAfter=bal,msg=null;
 // El juego real manda el símbolo (€) en updateBalance; aquí el código hasta que entre el PR #13 (currencyCode)
 const CUR=${JSON.stringify(mode.bug === 'currency' ? { sym: '$', code: 'USD' } : { sym: '€', code: 'EUR' })};
 const fmt=(v)=>v.toFixed(2).replace('.',',')+' '+CUR.sym;
 function draw(){const g=x.createLinearGradient(0,0,0,620);g.addColorStop(0,'#2a0b45');g.addColorStop(1,'#0b2a45');x.fillStyle=g;x.fillRect(0,0,1100,620);
  if(state==='loading'){x.fillStyle='#fff';x.font='28px sans-serif';x.fillText('Cargando…',480,300);return}
- reels.forEach((r,i)=>{x.fillStyle=['#e74c3c','#f1c40f','#2ecc71','#3498db','#9b59b6'][r%5];x.fillRect(150+i*165,70,145,400)});
+ reels.forEach((r,i)=>{x.fillStyle=PAL[r%5];x.fillRect(150+i*165,70,145,400)});
+ x.fillStyle='#fff';x.font='bold 30px DejaVu Sans, Arial, sans-serif';x.textAlign='center';x.fillText(NAME.toUpperCase(),550,48);x.textAlign='left';
  x.fillStyle='#0d0d14';x.fillRect(0,540,1100,80);x.fillStyle='#fff';x.font='bold 28px DejaVu Sans, Arial, sans-serif';
  x.fillText('CRÉDITO '+fmt(bal),250,592);x.fillText('APUESTA '+fmt(BET),640,592);
  if(shownWin>0){x.fillStyle='#ffd34d';x.fillText('GANANCIA '+fmt(shownWin),420,520)}
  if(rid){x.font='18px DejaVu Sans, Arial, sans-serif';x.fillStyle='#d0d0d0';x.fillText('#'+rid,14,612)}
  x.fillStyle=state==='spinning'?'#555':'#ff6a00';x.beginPath();x.arc(1010,580,32,0,7);x.fill();
  if(msg){x.fillStyle='rgba(0,0,0,.6)';x.fillRect(0,0,1100,540);x.fillStyle='#fff';x.fillRect(300,180,500,180);x.fillStyle='#111';x.font='bold 32px DejaVu Sans, Arial, sans-serif';x.fillText(msg[0],330,250);x.font='22px DejaVu Sans, Arial, sans-serif';x.fillText(msg[1],330,300)}}
-async function gs(action,extra){const r=await fetch('/gs2c/ge/v5/gameService',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({action,symbol:'${SENDER}',mgckey:new URLSearchParams(location.search).get('mgckey'),...extra})});return new URLSearchParams(await r.text())}
+async function gs(action,extra){const r=await fetch('/gs2c/ge/v5/gameService',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({action,symbol:'${sender}',mgckey:new URLSearchParams(location.search).get('mgckey'),...extra})});return new URLSearchParams(await r.text())}
 async function spin(){if(state!=='ready')return;
  if(bal<BET){msg=${JSON.stringify(mode.bug === 'lang' ? ['Insufficient funds', 'You do not have enough funds for this bet.'] : ['Saldo insuficiente', 'No tienes suficiente saldo para esta apuesta.'])};draw();return}
  state='spinning';shownWin=0;P('gameRoundStarted',{betAmount:BET,balanceBefore:bal,winAmount:lastWin,balanceAfter:lastAfter});
@@ -191,7 +209,7 @@ http
       const token = (url.searchParams.get('mgckey') ?? '').replace('AUTHTOKEN@', '');
       const user = tokens.get(token);
       if (!user) return send(res, 403, 'text/plain', 'sesión de juego no válida');
-      return send(res, 200, 'text/html; charset=utf-8', gameHtml(user));
+      return send(res, 200, 'text/html; charset=utf-8', gameHtml(user, url.searchParams.get('game') ?? 'Bubble Up', url.searchParams.get('symbol') ?? SENDER));
     }
     if (url.pathname === '/gs2c/ge/v5/gameService' && req.method === 'POST') {
       const p = new URLSearchParams(await body(req));

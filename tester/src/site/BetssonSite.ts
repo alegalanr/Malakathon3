@@ -78,6 +78,14 @@ export class BetssonSite {
     throw new LoginError('tras enviar el formulario sigue visible «Iniciar sesión» (¿credenciales, verificación adicional o CAPTCHA?)');
   }
 
+  /** Se resuelve cuando aparece «Iniciar sesión»; si no aparece en `timeout`, no se resuelve nunca (para usar en carreras). */
+  loginButtonShown(timeout: number): Promise<'logged-out'> {
+    return loginButton(this.page)
+      .first()
+      .waitFor({ state: 'visible', timeout })
+      .then(() => 'logged-out' as const, () => new Promise<never>(() => {}));
+  }
+
   async isLoggedIn(): Promise<boolean> {
     await this.page.waitForTimeout(1500);
     return !(await visible(loginButton(this.page), 4000));

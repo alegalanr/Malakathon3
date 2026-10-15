@@ -126,8 +126,11 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
     await site.openCasino();
     ev.log('note', 'cookies', await site.rejectCookies());
     // La señal de sesión es la cartera: responde en cuanto carga la página (sin esperas fijas)
-    let first = await wallet.waitForChange(0, T.sessionWalletMs);
-    if (!first) {
+    // Carrera: la cartera responde (hay sesión) o aparece «Iniciar sesión». En el segundo caso se dan 3 s
+    // de margen por si el encabezado se pinta antes que la sesión, y se falla rápido sin recargar.
+    const raced = await Promise.race([wallet.waitForChange(0, T.sessionWalletMs), site.loginButtonShown(T.sessionWalletMs)]);
+    let first = raced === 'logged-out' ? await wallet.waitForChange(0, 3000) : raced;
+    if (!first && raced !== 'logged-out') {
       await page.reload({ waitUntil: 'domcontentloaded' });
       first = await wallet.waitForChange(0, T.sessionWalletMs);
     }
