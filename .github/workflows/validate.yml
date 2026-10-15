@@ -84,7 +84,12 @@ jobs:
       - name: Resumen en la ejecución
         if: always()
         run: cat site/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Subir el sitio como artefacto (por si Pages no está activado)
+        uses: actions/upload-artifact@v4
+        with: { name: site, path: site, retention-days: 14 }
       - uses: actions/upload-pages-artifact@v3
         with: { path: site }
       - id: deploy
+        # Requiere activar Pages (Settings → Pages → GitHub Actions); si no, no tapa el resultado de los checks
+        continue-on-error: true
         uses: actions/deploy-pages@v4
