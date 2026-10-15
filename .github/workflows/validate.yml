@@ -1,0 +1,90 @@
+name: Validate games
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_mode:
+        description: "simulated = datos falsos · real = contra la web"
+        type: choice
+        options: [simulated, real]
+        default: simulated
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: ${{ matrix.scenario }} · ${{ matrix.market }}
+    runs-on: ${{ vars.RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        market: [es]
+        scenario: [completed-spin, insufficient-balance]
+    defaults:
+      run:
+        working-directory: tester
+    env:
+      MARKET: ${{ matrix.market }}
+      SCENARIO: ${{ matrix.scenario }}
+      RUN_MODE: ${{ inputs.run_mode || vars.RUN_MODE || 'simulated' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: tester/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - uses: actions/cache@v4
+        with:
+          path: tester/.cache/tesseract
+          key: tesseract-eng-spa
+      - name: Tests unitarios
+        run: npx playwright test --project=unit
+        env:
+          SKIP_LOGIN: "1"
+      - name: Ejecutar escenario
+        env:
+          BETSSON_ES_USER: ${{ secrets.BETSSON_ES_USER }}
+          BETSSON_ES_PASS: ${{ secrets.BETSSON_ES_PASS }}
+          BETSSON_ES_EMPTY_USER: ${{ secrets.BETSSON_ES_EMPTY_USER }}
+          BETSSON_ES_EMPTY_PASS: ${{ secrets.BETSSON_ES_EMPTY_PASS }}
+        run: npx playwright test tests/${{ matrix.scenario }}.spec.ts --project=${{ matrix.market }}
+      - name: Subir informe y evidencias
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-${{ matrix.market }}-${{ matrix.scenario }}
+          path: |
+            tester/reports/
+            tester/playwright-report/
+          retention-days: 14
+
+  publish:
+    needs: validate
+    if: always()
+    runs-on: ubuntu-latest
+    permissions: { pages: write, id-token: write, contents: read }
+    environment: { name: github-pages, url: "${{ steps.deploy.outputs.page_url }}" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/download-artifact@v4
+        with: { path: downloaded, pattern: report-* }
+      - name: Fusionar informes
+        run: node tester/scripts/merge-reports.mjs downloaded site
+      - name: Revisar secretos
+        run: node tester/scripts/scan-secrets.mjs site
+      - name: Resumen en la ejecución
+        if: always()
+        run: cat site/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: site }
+      - id: deploy
+        uses: actions/deploy-pages@v4

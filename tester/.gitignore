@@ -1,0 +1,12 @@
+# Secretos: credenciales y sesiones iniciadas (contienen cookies de login)
+.env
+.auth/
+
+# Salidas (los informes se publican desde CI, no se suben)
+node_modules/
+test-results/
+playwright-report/
+reports/
+site/
+downloaded/
+.cache/

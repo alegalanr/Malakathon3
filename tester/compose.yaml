@@ -1,0 +1,25 @@
+# Tester en Docker, sin instalar nada en el host.
+#
+#   docker compose -f tester/compose.yaml run --rm tester npm install   # la primera vez
+#   docker compose -f tester/compose.yaml up                            # modo UI → http://localhost:8080
+#   docker compose -f tester/compose.yaml run --rm tester npx playwright test          # sin UI
+#   docker compose -f tester/compose.yaml run --rm --service-ports tester npm run report  # informe → http://localhost:9323
+services:
+  tester:
+    # Imagen oficial de Playwright con Node y los navegadores. Su versión tiene que coincidir con @playwright/test.
+    image: mcr.microsoft.com/playwright:v1.56.0-noble
+    working_dir: /work
+    # Tu usuario, para que los ficheros generados no queden de root
+    user: "1000:1000"
+    environment:
+      HOME: /tmp/home
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - .:/work
+    ports:
+      - "127.0.0.1:8080:8080"   # modo UI
+      - "127.0.0.1:9323:9323"   # informe HTML
+    ipc: host                   # Chromium necesita más memoria compartida
+    command: npm run ui
