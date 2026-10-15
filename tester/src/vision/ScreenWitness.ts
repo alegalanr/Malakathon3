@@ -31,11 +31,17 @@ export function normalizeRid(raw: string): string {
   return after.replace(/[Oo]/g, '0').replace(/[lI|]/g, '1').replace(/S/g, '5').replace(/B/g, '8').replace(/\D/g, '');
 }
 
+/** Frase completa dentro del texto: «deposit» no debe encontrarse dentro de «deposita». */
+export function hasPhrase(normalizedText: string, phrase: string): boolean {
+  const p = normText(phrase).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return p !== '' && new RegExp(`(^|[^a-z0-9])${p}($|[^a-z0-9])`).test(normalizedText);
+}
+
 export function detectLanguage(text: string, cfg: RunConfig): { language?: 'es' | 'en'; hits: string[]; foreign: string[] } {
   const t = normText(text);
-  const mine = cfg.texts.insufficientBalance.map(normText).filter((k) => t.includes(k));
+  const mine = cfg.texts.insufficientBalance.map(normText).filter((k) => hasPhrase(t, k));
   const otherLang = cfg.language === 'es' ? 'en' : 'es';
-  const foreign = OTHER_LANG_WORDS[otherLang].map(normText).filter((k) => t.includes(k) && !OTHER_LANG_WORDS[cfg.language].map(normText).includes(k));
+  const foreign = OTHER_LANG_WORDS[otherLang].map(normText).filter((k) => hasPhrase(t, k) && !OTHER_LANG_WORDS[cfg.language].map(normText).includes(k));
   if (mine.length && !foreign.length) return { language: cfg.language, hits: mine, foreign };
   if (foreign.length) return { language: otherLang, hits: mine, foreign };
   return { hits: mine, foreign };

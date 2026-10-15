@@ -6,6 +6,7 @@ import type { BrowserContext, Response } from '@playwright/test';
 import type { SpinRecord } from '../contracts/schemas';
 import type { Evidence } from '../evidence/Evidence';
 import { eurosToCents } from '../domain/Money';
+import { errorKeyIn } from '../scenario2/RejectionHypotheses';
 
 const params = (s: string | null | undefined) => new URLSearchParams(s ?? '');
 
@@ -54,8 +55,9 @@ export class GameServerTap {
         balanceAfterSpin: eurosToCents(res.get('balance') ?? undefined),
         win: eurosToCents(res.get('tw') ?? undefined),
         needsCollect: res.get('na') === 'c',
+        nextAction: res.get('na') ?? undefined,
         status: r.status(),
-        error: r.status() >= 400 || !res.has('balance') ? (body.slice(0, 120) || `HTTP ${r.status()}`) : undefined,
+        error: r.status() >= 400 || !res.has('balance') || errorKeyIn(res) ? (body.slice(0, 120) || `HTTP ${r.status()}`) : undefined,
         t,
       };
       this.spins.push(rec);
