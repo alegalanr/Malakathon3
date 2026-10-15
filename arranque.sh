@@ -87,6 +87,11 @@ dry_reached() {
     process.exit(bad.length ? 1 : 0);" 2>/dev/null
 }
 
+session_expired() {
+  local f="tester/reports/es-$1/report.json"
+  [ -f "$f" ] && tr -d '\n\r' < "$f" | grep -Eq '"phase": *"F1"[^}]*"status": *"failed"[^}]*no iniciada'
+}
+
 show_checks() {
   node -e "
     const r = JSON.parse(require('fs').readFileSync('tester/reports/es-$1/report.json', 'utf8'));
@@ -152,8 +157,18 @@ if [ "$DRY" = 1 ] || [ "$REAL" = 1 ]; then
   DRY_OK=1
   for s in completed-spin insufficient-balance; do
     real_scenario "$s" -e DRY_RUN=1
+    # Betsson cierra la sesión pasado un tiempo: si ha caducado, se repite el login manual y se ensaya otra vez
+    if ! dry_reached "$s" && session_expired "$s"; then
+      echo "  La sesión de $(label_of "$s") ha caducado."
+      read -r -p '  ¿Iniciar sesión otra vez ahora? (S/n) ' again
+      if [[ ! "$again" =~ ^[nN] ]]; then
+        rm -f "tester/.auth/es-$s.json"
+        ensure_session "$s"
+        real_scenario "$s" -e DRY_RUN=1
+      fi
+    fi
     if dry_reached "$s"; then echo "  $s: ensayo OK, listo para girar"
-    else DRY_OK=0; echo "  $s: el ensayo no llega a F5 (si F1 dice «sesión no iniciada», borra tester/.auth/es-$s.json y vuelve a ejecutar)"; fi
+    else DRY_OK=0; echo "  $s: el ensayo no llega a F5"; fi
   done
   if [ "$REAL" = 1 ] && [ "$DRY_OK" = 0 ]; then fail 'El ensayo ha fallado: no se lanza nada con dinero real.'; fi
 fi

@@ -112,6 +112,13 @@ function Test-DryRunReached($scenario) {
   return ($failed.Count -eq 0)
 }
 
+function Test-SessionExpired($scenario) {
+  $file = "tester/reports/es-$scenario/report.json"
+  if (-not (Test-Path $file)) { return $false }
+  $r = Get-Content $file -Raw -Encoding UTF8 | ConvertFrom-Json
+  return [bool]@($r.phases | Where-Object { $_.phase -eq 'F1' -and $_.status -eq 'failed' -and $_.reason -match 'sesi.n no iniciada' }).Count
+}
+
 function Show-Checks($scenario) {
   $file = "tester/reports/es-$scenario/report.json"
   if (-not (Test-Path $file)) { return }
@@ -177,8 +184,17 @@ if ($DryRun -or $Real) {
   $dryOk = $true
   foreach ($s in @('completed-spin', 'insufficient-balance')) {
     Invoke-RealScenario $s -Dry | Out-Null
+    # Betsson cierra la sesión pasado un tiempo: si ha caducado, se repite el login manual y se ensaya otra vez
+    if (-not (Test-DryRunReached $s) -and (Test-SessionExpired $s)) {
+      Write-Host "  La sesión de $($Accounts[$s].Label) ha caducado." -ForegroundColor Yellow
+      if ((Read-Host '  ¿Iniciar sesión otra vez ahora? (S/n)') -notmatch '^[nN]') {
+        Remove-Item "tester/.auth/es-$s.json" -ErrorAction SilentlyContinue
+        Confirm-Session $s
+        Invoke-RealScenario $s -Dry | Out-Null
+      }
+    }
     if (Test-DryRunReached $s) { Write-Host "  $s`: ensayo OK, listo para girar" -ForegroundColor Green }
-    else { $dryOk = $false; Write-Host "  $s`: el ensayo no llega a F5 (si F1 dice «sesión no iniciada», borra tester/.auth/es-$s.json y vuelve a ejecutar)" -ForegroundColor Red }
+    else { $dryOk = $false; Write-Host "  $s`: el ensayo no llega a F5" -ForegroundColor Red }
   }
   if ($Real -and -not $dryOk) { Stop-WithError 'El ensayo ha fallado: no se lanza nada con dinero real.' }
 }
