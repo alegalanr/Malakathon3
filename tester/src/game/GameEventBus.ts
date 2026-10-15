@@ -21,6 +21,8 @@ type Waiter = { type: EventType; after: number; where?: (e: StandardEvent) => bo
 export class GameEventBus {
   readonly events: StandardEvent[] = [];
   readonly state = { ready: false, roundInProgress: false, currentBet: undefined as number | undefined, lastBalance: undefined as number | undefined, lastCurrency: undefined as string | undefined, sender: undefined as string | undefined };
+  /** Carga del juego (loadingProgress): porcentaje y cuándo avanzó por última vez. */
+  readonly loading = { percent: 0, advancedAt: 0 };
   private waiters: Waiter[] = [];
   private active = false;
   gameOrigin?: string;
@@ -57,6 +59,7 @@ export class GameEventBus {
   }
 
   ingest(msg: RawMessage) {
+    this.trackLoading(msg);
     const e = this.adapter.translate(msg, this.gameOrigin);
     if (!e) {
       this.ev.log('raw', 'message', msg.origin, msg.data, msg.t);
@@ -73,6 +76,38 @@ export class GameEventBus {
       }
       return true;
     });
+  }
+
+  private trackLoading(msg: RawMessage) {
+    let o: unknown = msg.data;
+    if (typeof o === 'string') {
+      try {
+        o = JSON.parse(o);
+      } catch {
+        return;
+      }
+    }
+    const m = o as { event?: string; params?: { percentage?: number } } | null;
+    const p = m?.event === 'loadingProgress' ? m.params?.percentage : undefined;
+    if (typeof p === 'number' && p > this.loading.percent) {
+      this.loading.percent = p;
+      this.loading.advancedAt = msg.t;
+    }
+  }
+
+  /**
+   * READY, esperando mientras la carga avance: falla si la carga se queda parada `stallMs`
+   * o si se pasa de `maxMs` en total. Con la web real la carga tarda de 40 s a más de 100 s.
+   */
+  async waitForReady(opts: { stallMs: number; maxMs: number }): Promise<StandardEvent> {
+    const start = Date.now();
+    for (;;) {
+      const ready = await this.tryWaitFor('READY', { timeoutMs: 5000 });
+      if (ready) return ready;
+      const lastProgress = Math.max(this.loading.advancedAt, start);
+      if (Date.now() - lastProgress > opts.stallMs) throw new Error(`la carga del juego se paró en el ${this.loading.percent} % (${Math.round(opts.stallMs / 1000)} s sin avanzar)`);
+      if (Date.now() - start > opts.maxMs) throw new Error(`el juego no terminó de cargar en ${Math.round(opts.maxMs / 1000)} s (iba por el ${this.loading.percent} %)`);
+    }
   }
 
   private apply(e: StandardEvent) {

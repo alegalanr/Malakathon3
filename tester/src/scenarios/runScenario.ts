@@ -31,6 +31,8 @@ const VIEWPORT = { width: 1366, height: 768 };
 const T = {
   sessionWalletMs: 20_000,
   readyMs: 60_000,
+  loadStallMs: 30_000, // READY: falla si la carga no avanza en 30 s…
+  loadMaxMs: 180_000, // …o si tarda más de 3 min en total
   settleMs: 1500,
   roundStartMs: 5_000,
   roundEndMs: 45_000,
@@ -177,8 +179,8 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
     const game = await findGameFrame(page, T.readyMs);
     need(game, 'no aparece el iframe del juego');
     bus.gameOrigin = game!.origin;
-    await bus.waitFor('READY', { timeoutMs: T.readyMs }).catch(() => {
-      throw new PhaseError('el juego no emitió READY (gameLoadingEnded) en 60 s');
+    await bus.waitForReady({ stallMs: T.loadStallMs, maxMs: T.loadMaxMs }).catch((e: Error) => {
+      throw new PhaseError(`el juego no emitió READY (gameLoadingEnded): ${e.message}`);
     });
     await page.waitForTimeout(T.settleMs); // pantalla tranquila: sin animación de entrada a medias
     await dismissIntro(page, game!, ev);
