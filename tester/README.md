@@ -1,124 +1,89 @@
 # Tester (TypeScript + Playwright Test)
 
-Escenario 1 del reto (tirada completada en Real Play) contra **betsson.es**, la testbed que nos han dado.
-El diseño completo es el de `SOLUCION.md` del equipo; esto es su versión básica de punta a punta.
+Implementación de `SOLUCION.md` (núcleo, fases F0-F13 y contratos C1-C18) y `DISENO.md` (CI, informe y modo simulado) del equipo, contra **betsson.es**.
 
-## Puesta en marcha
+## Ejecutar
 
 Todo en Docker (imagen oficial de Playwright); en el host no se instala nada.
 
-1. Crea `tester/.env` (no se sube) con:
+1. `tester/.env` (no se sube) con las cuentas de prueba:
 
    ```
-   BETSSON_ES_USER=tu-usuario-de-prueba
-   BETSSON_ES_PASS=tu-contraseña-de-prueba
+   BETSSON_ES_USER=...
+   BETSSON_ES_PASS=...
+   BETSSON_ES_EMPTY_USER=...   # escenario 2 (cuando la den los mentores)
+   BETSSON_ES_EMPTY_PASS=...
    ```
 
-   Opciones (todas tienen valor por defecto, ver [Opciones](#opciones)): `MAX_BET`, `GAME_SEARCH`, `GAME_PATH`, `OPEN_MODE`, `SPIN_MODE`, `SPIN_CLICK_X`, `SPIN_CLICK_Y`, `UNKNOWN_BET`, `WALLET_WAIT_S`.
+   Opcionales: `MAX_BET` (EUR, por defecto 5), `GAME_NAME` / `GAME_SEARCH` / `GAME_PATH` (por defecto Bubble Up), `RUN_MODE` (`real` por defecto en local), `SIMULATION` (`pass` | `mixed`).
 
-2. Instala las dependencias (la primera vez):
+2. Primera vez: `docker compose -f tester/compose.yaml run --rm tester npm install`
 
-   ```bash
-   docker compose -f tester/compose.yaml run --rm tester npm install
-   ```
-
-3. Abre el modo UI y míralo funcionar:
+3. Modo UI → <http://localhost:8080>, proyecto **`es`**:
 
    ```bash
    docker compose -f tester/compose.yaml up
    ```
 
-   Abre <http://localhost:8080>, pulsa ▶ en el proyecto `lobby` (público, no gasta nada) o en `es` (escenario 1 completo). Cada paso sale con su captura; al terminar tienes la traza con red, consola y DOM.
+Otros comandos (`docker compose -f tester/compose.yaml run --rm tester …`):
 
-Sin UI y con el informe HTML:
+| Comando | Qué hace |
+|---|---|
+| `npx playwright test --project=es tests/completed-spin.spec.ts` | Escenario 1 contra la web real |
+| `npm run unit` | Tests unitarios: Money, adaptador, reglas con rondas reales, secretos (sin navegador) |
+| `npm run smoke` | Lobby público: cookies + buscador (sin sesión ni dinero) |
+| `RUN_MODE=simulated npx playwright test --project=es` | Los dos escenarios con datos simulados (añade `SIMULATION=mixed` para ver FAIL) |
 
-```bash
-docker compose -f tester/compose.yaml run --rm tester npx playwright test --project=es
-docker compose -f tester/compose.yaml run --rm --service-ports tester npm run report   # http://localhost:9323
+Tras cada escenario: **`tester/reports/es-<escenario>/report.html`** (el entregable: checks con esperado, obtenido, fuentes y evidencias), `report.json` (C14), `timeline.jsonl` censurado y `evidence/` (capturas y recortes del OCR). La traza de Playwright queda en `test-results/` y no se publica (D9).
+
+## Cómo funciona
+
+```
+global-setup  login de cada cuenta en un navegador sin traza → .auth/es-<escenario>.json
+F0  RunConfig (zod) · OCR (tesseract.js, eng+spa)       F7  ronda hasta resultShown (o rechazo) · captura liquidada
+F1  sesión en el dominio del mercado + cartera en EUR    F8  testigo visual: rid y apuesta (o aviso y apuesta)
+F2  oyentes: postMessage (top) · red · cartera           F9  cartera final B1, posterior a la ronda
+F3  buscar → Real Play → DGOJ → iframe → READY · saldo juego = cartera   F10 GameRound + invariantes §14.3
+F4  ControlMap: control de girar y zonas de lectura      F11 checks (IDs de DISENO §7.3)
+F5  B0, saldo del juego, apuesta ≤ máximo · captura en reposo   F12 report.json + report.html
+F6  Espacio → ROUND_STARTED; si no, explorador (Enter → barrido → clic + evento)
 ```
 
-Tras cada ejecución del escenario, `tester/evidence/ultima/` tiene `checks.json`, `timeline.jsonl` (censurado) y las capturas.
+Si una fase de F1-F9 falla, las siguientes quedan "no ejecutada" con el motivo; F10-F12 se ejecutan siempre y el informe explica dónde se paró.
 
-## Qué hace
+## Verificado
 
-```
-global-setup  login sin traza ni vídeo → .auth/state.json (no se sube)
-1  casino con la sesión iniciada · rechazar cookies no esenciales
-2  saldo de Betsson antes (B0): respuesta de /api/v2/wallet/balance que pide la propia web
-3  buscar «Bubble Up» en el lobby (o ir a su página si el buscador no lo devuelve)
-4  abrir en Real Play · sesión de juego DGOJ si aparece · esperar gameLoadingEnded
-5  antes de girar: apuesta y saldos; no se gira si la apuesta conocida supera MAX_BET
-6  girar con Espacio y confirmarlo con gameRoundStarted
-7  esperar spinEnded y resultShown · captura del resultado
-8  saldo de Betsson después (B1): siguiente refresco de la cartera o recarga de la página
-9  comprobaciones P1, S1.1–S1.5 y R1, cada una con esperado, obtenido y fuentes
-```
+| Qué | Evidencia |
+|---|---|
+| Compila (`tsc --noEmit`) | Docker, 15/10 |
+| 17 tests unitarios (rondas reales …658268119 y …663731119 → PASS; alteradas → FAIL justo en su check) | `npm run unit` |
+| Modo simulado con **OCR real** sobre un juego falso: `pass` 14/14; `mixed` → FAIL solo en `S1-RID-VISIBLE` y `S2-MSG-LANG-VISIBLE` | `RUN_MODE=simulated` |
+| `merge-reports` + `scan-secrets` sobre los informes: sin secretos | `site/index.html`, `summary.md` |
+| Lobby real: cookies rechazadas y buscador devuelve Bubble Up | `npm run smoke` |
+| El escenario contra la web real con sesión | **Sin ejecutar** (necesita tus credenciales) |
 
-| Id | Comprobación | Fuentes |
+## Cómo se han tapado los huecos de los documentos
+
+| Hueco | Solución | Por qué |
 |---|---|---|
-| P1 | Real Play: saldo del juego = cartera de Betsson antes de girar | evento + API cartera |
-| S1.1 | La tirada empezó (tras nuestra acción) y terminó | eventos (+ `doSpin` en la red) |
-| S1.2 | La apuesta mostrada es la usada | `gameRoundStarted` = `c×l` de `doSpin` (= `betChanged`) |
-| S1.3 | La moneda es la del mercado (EUR) | API cartera + `updateBalance` |
-| S1.4 | El saldo del juego cuadra: antes − apuesta + premio | eventos + `doSpin`/`doCollect` |
-| S1.5 | El saldo de Betsson cuadra: B1 = B0 − apuesta + premio | API cartera |
-| R1 | La ronda tiene `rid` del servidor | `doSpin` (+ captura) |
+| El login (F1) dejaba la contraseña en la traza (el modo UI traza siempre) | Login en `global-setup.ts`, en un navegador aparte sin traza; F1 verifica la sesión, el dominio y que la cartera responde en EUR | "Sin dejar credenciales en ningún sitio" (F1) también en el modo UI |
+| Tras una navegación interna de la web (SPA) el script de inicio no se ejecuta | F2 instala además el listener en la página ya cargada (con guarda para no duplicarlo) | Si no, se pierden `gameLoadingEnded` y los eventos de la ronda |
+| F5 exige `currentBet` ≤ `maxBet`, pero puede no llegar `betChanged` al cargar | Si no hay evento, la apuesta se lee en pantalla (testigo visual sobre la captura en reposo); si tampoco, no se gira | Prudencia con dinero real sin bloquear el escenario |
+| "Un único reintento" en F6 y el explorador de §3.4 | El reintento es el explorador: Enter → barrido sin clics → clic clasificado por evento (máx. 6, Escape en ventanas) | Une F6 con §3.4 sin hacer más de una tirada |
+| El `#` del rid se lee como `4` (comprobado con OCR real) | El ancla del rid también acepta "6+ dígitos en la esquina inferior izquierda"; la comparación ya tolera el carácter extra | Sin esto el check visual del rid fallaba siempre |
+| `ssid=***` hacía saltar el escáner aunque estaba censurado (encontrado por un test) | La censura renombra también la clave | Si no, `scan-secrets` bloquearía siempre la publicación |
+| `markets.json` no tenía `es` (la testbed) | Añadido con `loginPath`, `locale`, `timezone` y formato de número | Las cuentas son de betsson.es |
+| Vídeo | Desactivado | El vídeo graba el usuario en pantalla y no se puede enmascarar (DISENO lo deja opcional) |
 
-## Estructura
+## Pendiente de definir (para pasar el trabajo)
 
-```
-config/settings.ts        mercado, juego, opciones y tiempos (única fuente de ajustes)
-global-setup.ts           login fuera de las pruebas
-src/site/betsson.ts       cookies, login, sesión DGOJ, buscador, Real Play, iframe del juego
-src/site/wallet.ts        cartera de Betsson (lectura pasiva de la red)
-src/game/events.ts        listener de postMessage + adaptador de Pragmatic → eventos estándar
-src/game/server-tap.ts    doSpin / doCollect de la red
-src/validation/checks.ts  comprobaciones
-src/evidence/             cronología y censura de secretos
-tests/lobby.spec.ts       parte pública (sin sesión)
-tests/completed-spin.spec.ts  escenario 1
-```
-
-## Decisiones
-
-| Decisión | Cómo | Por qué | Alternativa descartada |
+| # | Qué | Dónde | Qué hace falta |
 |---|---|---|---|
-| Carpeta `tester/` aparte | TS con su propio `compose.yaml` | No se toca ni se borra el bot en Python; la limpieza se decide luego | Sustituir el Python ya |
-| Login en `globalSetup` | Navegador sin traza ni vídeo; guarda la sesión | La traza de Playwright guarda el texto de cada `fill`: así la contraseña no llega al informe | Login dentro de la prueba con `mask` (el `mask` no protege la traza) |
-| Eventos por `postMessage` | Script inyectado antes de cargar + `exposeBinding`, con la hora de llegada | Es lo que el juego ya cuenta a Betsson; no se toca el juego | Leer variables del juego (va contra el reto) |
-| Adaptador tolerante | Busca el nombre del evento y sus valores en cualquier nivel del mensaje | El formato exacto del sobre aún no está fijado; los mensajes no reconocidos se guardan en bruto en la cronología | Asumir un formato y romperse |
-| Cartera pasiva | Se escucha `/api/v2/wallet/balance`; si no refresca, se recarga la página | Somos una herramienta externa: solo datos que ya ve la página | Llamar a la API directamente |
-| Captura en `resultShown` | Momento "liquidado" | En `spinEnded` el premio aún está contándose (lo vio el equipo) | Captura en `spinEnded` |
-| Un worker y sin reintentos | `workers: 1`, `retries: 0` | Una cuenta = un saldo; con dinero real no se repite a ciegas | Paralelo |
-| Imagen Docker fija | `mcr.microsoft.com/playwright:v1.56.0-noble` y `@playwright/test@1.56.0` | La versión del navegador y la de la librería tienen que coincidir | Instalar Node en el host |
-
-## Opciones
-
-Se eligen en `tester/.env`. En negrita, el valor por defecto.
-
-| Variable | Valores | Qué cambia |
-|---|---|---|
-| `OPEN_MODE` | **`search`** · `url` | `search` busca en el lobby como un jugador (si no lo encuentra, va a la página del juego); `url` va directo |
-| `SPIN_MODE` | **`space`** · `click` | `space` gira sin coordenadas; `click` hace clic en `SPIN_CLICK_X/Y` (0–1, relativos al juego) si Espacio no funciona |
-| `UNKNOWN_BET` | **`spin`** · `abort` | Si no se conoce la apuesta antes del primer giro: `spin` gira y lo marca después si supera `MAX_BET`; `abort` no gira. Por defecto `spin` porque sin el explorador de controles aún no hay forma de leer la apuesta antes del primer giro |
-| `MAX_BET` | **`5`** | Apuesta máxima en EUR. Ojo: Pragmatic recuerda la última apuesta del jugador (el equipo jugó con 2,80–4 €) |
-| `GAME_SEARCH` / `GAME_PATH` | **`Bubble Up`** / **`/casino/tragaperras-slots/bubble-up`** | Otro juego de Pragmatic |
-| `WALLET_WAIT_S` | **`40`** | Espera al refresco de la cartera antes de recargar la página |
-
-## Pendiente de definir (para repartir)
-
-Marcado también con ⚠️ en el código.
-
-| # | Qué falta | Dónde | Qué hace falta saber |
-|---|---|---|---|
-| 1 | **Login** | `src/site/betsson.ts` `login()` | ¿Ventana emergente o página? Selectores de usuario, contraseña y envío. ¿Segundo factor? |
-| 2 | **Sesión de juego DGOJ** | `handleGameSession()` | Qué pide (tiempo, importe), si tiene valores por defecto y qué botón la confirma. Ahora solo se detecta e intenta confirmar |
-| 3 | **Abrir en Real Play** | `launchRealPlay()` | ¿Hay botón «Jugar» o basta `?gameAction=play`? ¿Puede abrir en demo? |
-| 4 | **Formato de los eventos** | `src/game/events.ts` | Sobre exacto del mensaje (campo del nombre, `params`, `sender`) y a qué ventana llega. Con la primera ejecución, `timeline.jsonl` lo enseña |
-| 5 | **Apuesta antes de girar** | paso 5 | ¿Llega `betChanged` al cargar? Si no, hace falta el explorador (`betDown`) para fijar la apuesta mínima |
-| 6 | **Espacio gira en Pragmatic** | paso 6 | Sin comprobar; alternativa `SPIN_MODE=click` |
-| 7 | **Premios grandes** | paso 7 | Si una animación de premio pide clic, `resultShown` puede no llegar |
-| 8 | **Refresco de la cartera** | `wallet.ts`, paso 8 | ¿Basta esperar ~30 s o mejor `refreshBalance`? ¿Abrir el desplegable «Saldo» para la captura? |
-| 9 | **Verificación visual** | R1 y recortes | Comprobar en pantalla el `#rid`, CRÉDITO y APUESTA (OCR dirigido sobre recortes) |
-| 10 | **Resultados del buscador** | `searchGame()` | Cómo se distingue la ficha correcta y si enseña el proveedor |
-| 11 | **Escenario 2** | — | Cuenta sin saldo y contrato del rechazo |
+| 1 | ⚠️ **Formulario de login** sin ver (en el navegador de pruebas `/inicio` no lo pinta) | `BetssonSite.login()` | Primera ejecución: si falla, `tester/.auth/login-fallido-*.png` (campos tapados) |
+| 2 | ⚠️ **Sesión de juego DGOJ**: solo se detecta e intenta confirmar | `handleGameSession()` | Qué pide y cómo se confirma |
+| 3 | ⚠️ **Botón de Real Play** o `?gameAction=play` | `launchRealPlay()` | Confirmarlo con sesión |
+| 4 | ⚠️ **Sobre de los mensajes postMessage** (dónde va el nombre): el adaptador lo busca en cualquier campo | `PragmaticAdapter` | Un mensaje real; los no reconocidos quedan en `timeline.jsonl` como `raw` |
+| 5 | ⚠️ **F3 exige `updateBalance`** para comprobar Real Play (saldo del juego = cartera) | `runScenario` F3 | Confirmar que llega al cargar |
+| 6 | ⚠️ **Zonas del OCR en el juego real** (fuente de Pragmatic, posición de APUESTA y `#rid`) | `RoiLocator`, `control-maps/` | Primera ejecución: recortes en `evidence/crop-*.png` |
+| 7 | **Escenario 2**: contrato del rechazo (`REJECTED` por descubrir) | adaptador + F7 | Cuenta sin saldo |
+| 8 | **GitHub**: secrets `BETSSON_ES_*`, activar Pages (repo privado: depende del plan) y `RUNNER=self-hosted` si los runners no llegan a betsson.es | `.github/workflows/validate.yml` | Configurarlo en el repo |

@@ -1,43 +1,48 @@
 /**
- * Login una vez por ejecución, FUERA de las pruebas: así la contraseña nunca entra en la traza
- * ni en el vídeo del informe. Guarda la sesión en .auth/state.json (no se sube) y las pruebas la reutilizan.
+ * F1 (login): una vez por ejecución y FUERA de las pruebas, en un navegador sin traza ni vídeo,
+ * para que las credenciales no lleguen a ninguna evidencia (ni siquiera a la traza del modo UI).
+ * Guarda la sesión de cada cuenta en .auth/<market>-<scenario>.json (no se sube); F1 la verifica.
  */
 import fs from 'node:fs';
-import path from 'node:path';
 import { chromium } from '@playwright/test';
-import { SETTINGS, credentials } from './config/settings';
-import { isLoggedIn, login, openCasino, rejectCookies } from './src/site/betsson';
+import type { Scenario } from './src/contracts/schemas';
+import { AUTH_DIR, authFile, loadRunConfig, marketFromEnv, readCredentials, runMode } from './src/config/RunConfig';
+import { BetssonSite } from './src/site/BetssonSite';
+
+const EMPTY = JSON.stringify({ cookies: [], origins: [] });
 
 export default async function globalSetup() {
-  const file = SETTINGS.authFile;
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const { user, pass } = credentials();
-  if (!user || !pass) {
-    console.warn(`⚠️  Sin credenciales (${SETTINGS.market.userEnv}/${SETTINGS.market.passEnv} en tester/.env): solo se ejecuta la prueba del lobby.`);
-    fs.writeFileSync(file, JSON.stringify({ cookies: [], origins: [] }));
+  fs.mkdirSync(AUTH_DIR, { recursive: true });
+  const market = marketFromEnv();
+  const scenarios: Scenario[] = ['completed-spin', 'insufficient-balance'];
+  if (runMode() === 'simulated' || process.env.SKIP_LOGIN === '1') {
+    for (const s of scenarios) fs.writeFileSync(authFile(market, s), EMPTY);
     return;
   }
-  const m = SETTINGS.market;
-  const browser = await chromium.launch();
-  const context = await browser.newContext({ locale: m.locale, timezoneId: m.timezone, viewport: { width: 1366, height: 768 } });
-  const page = await context.newPage();
-  try {
-    console.log(`Login en ${m.baseUrl} (sin traza ni vídeo)…`);
-    await openCasino(page);
-    console.log(`  · ${await rejectCookies(page)}`);
-    await login(page, user, pass);
-    if (!(await isLoggedIn(page))) throw new Error('el botón «Iniciar sesión» sigue visible');
-    await context.storageState({ path: file });
-    console.log('  · sesión iniciada y guardada');
-  } catch (e) {
-    fs.mkdirSync(SETTINGS.evidenceDir, { recursive: true });
-    // Captura del fallo con los campos del formulario tapados.
-    await page
-      .screenshot({ path: `${SETTINGS.evidenceDir}/login-fallido.png`, mask: [page.locator('input')] })
-      .catch(() => {});
-    fs.writeFileSync(file, JSON.stringify({ cookies: [], origins: [] }));
-    console.error(`✘ Login fallido: ${(e as Error).message.split('\n')[0]}. Captura en tester/${SETTINGS.evidenceDir}/login-fallido.png`);
-  } finally {
-    await browser.close();
+  for (const scenario of scenarios) {
+    const cfg = loadRunConfig(market, scenario, 'real');
+    const creds = readCredentials(cfg);
+    const file = authFile(market, scenario);
+    if (!creds) {
+      console.warn(`⚠️  ${scenario}: faltan ${cfg.credentialEnv.userEnv}/${cfg.credentialEnv.passEnv}; ese escenario fallará en F1.`);
+      fs.writeFileSync(file, EMPTY);
+      continue;
+    }
+    const browser = await chromium.launch();
+    const context = await browser.newContext({ locale: cfg.locale, timezoneId: cfg.timezone, viewport: { width: 1366, height: 768 } });
+    const page = await context.newPage();
+    try {
+      console.log(`Login ${scenario} en ${cfg.baseUrl} (sin traza ni vídeo)…`);
+      await new BetssonSite(page, cfg).login(creds.user, creds.pass);
+      await context.storageState({ path: file });
+      console.log('  · sesión guardada');
+    } catch (e) {
+      fs.writeFileSync(file, EMPTY);
+      const shot = `${AUTH_DIR}/login-fallido-${scenario}.png`;
+      await page.screenshot({ path: shot, mask: [page.locator('input')] }).catch(() => {});
+      console.error(`✘ Login ${scenario} fallido: ${(e as Error).message.split('\n')[0]}. Captura (campos tapados): tester/.auth/login-fallido-${scenario}.png`);
+    } finally {
+      await browser.close();
+    }
   }
 }
