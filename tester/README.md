@@ -30,9 +30,10 @@ Otros comandos (`docker compose -f tester/compose.yaml run --rm tester …`):
 | Comando | Qué hace |
 |---|---|
 | `npx playwright test --project=es tests/completed-spin.spec.ts` | Escenario 1 contra la web real |
-| `npm run unit` | Tests unitarios: Money, adaptador, reglas con rondas reales, secretos (sin navegador) |
+| `npm run unit` | Tests unitarios: Money, adaptador, reglas con rondas reales, secretos, escenario 2 y casos raros (sin navegador) |
 | `npm run smoke` | Lobby público: cookies + buscador (sin sesión ni dinero) |
 | `RUN_MODE=simulated npx playwright test --project=es` | Los dos escenarios con datos simulados (añade `SIMULATION=mixed` para ver FAIL) |
+| `node scripts/compare-games.mjs reports/juegos/*` | Compara el escenario 1 en varios juegos de Pragmatic (ver [Escenario 2 y casos raros](#escenario-2-y-casos-raros)) |
 
 Tras cada escenario: **`tester/reports/es-<escenario>/report.html`** (el entregable: checks con esperado, obtenido, fuentes y evidencias), `report.json` (C14), `timeline.jsonl` censurado y `evidence/` (capturas y recortes del OCR). La traza de Playwright queda en `test-results/` y no se publica (D9).
 
@@ -75,6 +76,71 @@ Si una fase de F1-F9 falla, las siguientes quedan "no ejecutada" con el motivo; 
 | `markets.json` no tenía `es` (la testbed) | Añadido con `loginPath`, `locale`, `timezone` y formato de número | Las cuentas son de betsson.es |
 | Vídeo | Desactivado | El vídeo graba el usuario en pantalla y no se puede enmascarar (DISENO lo deja opcional) |
 
+## Escenario 2 y casos raros
+
+### Rechazo por saldo insuficiente (F7)
+
+Tras el intento, `detectRejection()` (`src/scenario2/RejectionDetector.ts`) junta **tres señales independientes**:
+
+- **Evento:** un `REJECTED` del adaptador.
+- **Red:** un `doSpin` con error.
+- **Pantalla:** la imagen del juego cambia (el aviso).
+
+Con ellas da un veredicto:
+
+| Veredicto | Cuándo |
+|---|---|
+| `charged` | Hubo `doSpin` sin error o `ROUND_STARTED` con apuesta: la tirada se cobró |
+| `rejected` | Sin cobro y con al menos una señal (confianza alta con dos o más) |
+| `rejected-unconfirmed` | Sin cobro y solo eventos no reconocidos |
+| `no-reaction` | Nada: F7 falla («ninguna reacción tras el intento») |
+
+`S2-REJECTED` sigue siendo PASS o FAIL por la misma regla ("ningún `ROUND_STARTED` con cobro ni `doSpin` cobrado"); además, ahora el campo "obtenido" muestra el veredicto y las señales.
+
+Al terminar, `reports/es-insufficient-balance/rejection-contract.json` recoge el **borrador del contrato de rechazo**:
+
+- qué evento llegó, con una muestra censurada;
+- los eventos no reconocidos;
+- las llamadas a `gameService`;
+- cuándo cambió la pantalla y el texto leído del aviso;
+- los saldos antes y después.
+
+Con la primera ejecución real se confirma o corrige `config/rejection-hypotheses.json`: los nombres y contenidos que el adaptador traduce a `REJECTED`, y las claves de error de la red. Mientras su `status` sea `hypothesis`, el evento es una señal más, no la prueba.
+
+### Casos raros
+
+| Caso | Qué hace el tester | Dónde |
+|---|---|---|
+| Cuenta "sin saldo" **con** saldo para la apuesta | **No gira** (F5 falla con el motivo): se gastaría dinero real. Si el juego y la cartera discrepan, manda el mayor | `scenarioPrecondition()` en F5 |
+| Escenario 1 sin saldo para la apuesta | No gira: la tirada se rechazaría | `scenarioPrecondition()` en F5 |
+| Ronda pendiente al cargar | Espera a que termine (`ROUND_ENDED`, máx. 45 s) antes de leer el estado inicial | F5 |
+| Free spins o bonus (ronda extendida) | Se detecta por varios `doSpin`, un `na` distinto de `s`/`c`, acciones de bonus en la red o varios `spinStarted`. **No pulsa nada**: espera a que el juego termine solo (máx. 180 s, 15 s sin actividad), hace una captura y F7 falla con el motivo, porque el tester valida rondas de una sola tirada | `extendedRoundSignals()` en F7 |
+| Aviso en otro idioma | `S2-MSG-LANG-VISIBLE` da FAIL. El idioma se detecta por **frases completas**: antes, "Deposita" contenía "deposit" y un aviso en español salía como inglés | `detectLanguage()` |
+| Premio = apuesta | Ya cubierto: F9 espera una lectura **posterior** de la cartera, no un cambio de saldo | F9 |
+| Apuesta por encima de `maxBet` | Ya cubierto: F5 no gira, y si aun así empieza una ronda, `S1-BET-USED` da FAIL | F5 y reglas |
+| Ronda duplicada o autoplay, falta de `doCollect`, otro mercado | Ya cubiertos | F7 y `BetssonSite.session()` |
+
+### Probar varios juegos
+
+El flujo no depende del juego: se cambia con `GAME_NAME`, `GAME_SEARCH` y `GAME_PATH`.
+
+```bash
+GAME_NAME="<juego>" GAME_SEARCH="<juego>" GAME_PATH="/casino/…/<slug>" npx playwright test --project=es tests/completed-spin.spec.ts
+cp -r reports/es-completed-spin reports/juegos/<juego>   # tras cada juego
+node scripts/compare-games.mjs reports/juegos/*            # → reports/juegos/comparison.md
+```
+
+`comparison.md` compara, juego a juego:
+
+- el `sender`;
+- las fases y los checks;
+- el orden `ROUND_STARTED → SPIN_ENDED → ROUND_ENDED`;
+- si hay `doSpin` en la red;
+- el control con el que se giró;
+- los eventos no traducidos.
+
+Al final dice si el flujo es genérico.
+
 ## Pendiente de definir (para pasar el trabajo)
 
 | # | Qué | Dónde | Qué hace falta |
@@ -85,5 +151,5 @@ Si una fase de F1-F9 falla, las siguientes quedan "no ejecutada" con el motivo; 
 | 4 | ⚠️ **Sobre de los mensajes postMessage** (dónde va el nombre): el adaptador lo busca en cualquier campo | `PragmaticAdapter` | Un mensaje real; los no reconocidos quedan en `timeline.jsonl` como `raw` |
 | 5 | ⚠️ **F3 exige `updateBalance`** para comprobar Real Play (saldo del juego = cartera) | `runScenario` F3 | Confirmar que llega al cargar |
 | 6 | ⚠️ **Zonas del OCR en el juego real** (fuente de Pragmatic, posición de APUESTA y `#rid`) | `RoiLocator`, `control-maps/` | Primera ejecución: recortes en `evidence/crop-*.png` |
-| 7 | **Escenario 2**: contrato del rechazo (`REJECTED` por descubrir) | adaptador + F7 | Cuenta sin saldo |
+| 7 | **Escenario 2**: confirmar el contrato del rechazo. El detector y las hipótesis ya están; falta verlo en real | `config/rejection-hypotheses.json` y `rejection-contract.json` | Cuenta sin saldo: una ejecución real del escenario 2 |
 | 8 | **GitHub**: secrets `BETSSON_ES_*`, activar Pages (repo privado: depende del plan) y `RUNNER=self-hosted` si los runners no llegan a betsson.es | `.github/workflows/validate.yml` | Configurarlo en el repo |

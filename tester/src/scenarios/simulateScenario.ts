@@ -9,6 +9,7 @@ import type { PhaseStatus, RunConfig, RunReport, StandardEvent } from '../contra
 import { REPORTS_DIR } from '../config/RunConfig';
 import { buildGameRound, type InitialState, type RoundTrace } from '../domain/GameRound';
 import { Evidence } from '../evidence/Evidence';
+import { detectRejection } from '../scenario2/RejectionDetector';
 import { buildRunReport } from '../report/Report';
 import { completeChecks, evaluateChecks } from '../validation/rules';
 import { OcrEngine } from '../vision/OcrEngine';
@@ -66,7 +67,9 @@ export async function simulateScenario(args: { page: Page; cfg: RunConfig }): Pr
     const msg = mixed ? ['Insufficient funds', 'You do not have enough funds.'] : ['Saldo insuficiente', 'No tienes suficiente saldo.'];
     await page.setContent(fakeGameHtml({ credit: '0,10 €', bet: '0,20 €', message: msg }));
     const cap = await ev.capture(page, 'rejected', 'Aviso tras el intento · simulado', t + 900);
-    trace = { action: { action: 'spin', method: 'key', key: 'Space', t: t + 50 }, events: [], spins: [], outcome: 'rejected', capture: cap ? { path: cap.path, t: cap.t, triggerEvent: 'cambio de pantalla' } : undefined };
+    const action = { action: 'spin' as const, method: 'key' as const, key: 'Space', t: t + 50 };
+    trace = { action, events: [], spins: [], outcome: 'rejected', capture: cap ? { path: cap.path, t: cap.t, triggerEvent: 'cambio de pantalla' } : undefined };
+    trace.rejection = detectRejection({ action, events: [], spins: [], calls: [], screenChangedAt: t + 900 });
     after = wallet(10, 40_000);
   }
   for (const x of trace.events) ev.log('event', `${x.type} ← ${x.name}`, JSON.stringify(x.data), undefined, x.t);

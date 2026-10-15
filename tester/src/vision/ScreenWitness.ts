@@ -42,8 +42,27 @@ export function normalizeRid(raw: string): string {
 }
 
 /**
- * Idioma del aviso. Comparación difusa ("sald0 insuficlente" vale), pero una palabra del mercado no
- * cuenta si lo leído se parece igual o más a una del otro idioma ("insufficient" ≈ "insuficiente").
+ * Frase completa dentro del texto: «deposit» no debe encontrarse dentro de «deposita» (regla de Julia,
+ * escenario 2). Exacta; la versión tolerante a errores del OCR es `matchesPhrase`.
+ */
+export function hasPhrase(normalizedText: string, phrase: string): boolean {
+  const p = normalizeText(phrase).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return p !== '' && new RegExp(`(^|[^a-z0-9ñ])${p}($|[^a-z0-9ñ])`).test(normalizeText(normalizedText));
+}
+
+/**
+ * La frase aparece como palabras completas, con tolerancia a errores del OCR ("sald0 insuficlente").
+ * Las frases cortas exigen más parecido: si no, «suficiente» casaría con «insuficiente».
+ */
+function matchesPhrase(text: string, phrase: string): { found: boolean; score: number; match?: string } {
+  if (hasPhrase(text, phrase)) return { found: true, score: 1, match: normalizeText(phrase) };
+  const minSimilarity = normalizeText(phrase).length <= 12 ? 0.9 : 0.8;
+  return containsFuzzy(text, phrase, minSimilarity);
+}
+
+/**
+ * Idioma del aviso. Comparación por palabras completas y tolerante al OCR, pero una frase del mercado
+ * no cuenta si lo leído se parece igual o más a una del otro idioma ("insufficient" ≈ "insuficiente").
  */
 export function detectLanguage(text: string, cfg: RunConfig): { language?: 'es' | 'en'; hits: string[]; foreign: string[] } {
   const otherLang = cfg.language === 'es' ? 'en' : 'es';
@@ -51,7 +70,7 @@ export function detectLanguage(text: string, cfg: RunConfig): { language?: 'es' 
   const otherWords = OTHER_LANG_WORDS[otherLang].map(normalizeText).filter((k) => !own.includes(k));
   const foreign = otherWords.filter((k) => containsFuzzy(text, k, 0.9).found);
   const hits = cfg.texts.insufficientBalance.filter((k) => {
-    const m = containsFuzzy(text, k, 0.8);
+    const m = matchesPhrase(text, k);
     if (!m.found || !m.match) return false;
     const otherScore = Math.max(0, ...otherWords.map((o) => containsFuzzy(m.match!, o, 0).score));
     return m.score > otherScore;

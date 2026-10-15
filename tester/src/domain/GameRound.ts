@@ -6,6 +6,7 @@ import {
   GameRound, type ActionRecord, type Cents, type RunConfig, type Scenario, type SpinRecord, type StandardEvent,
   type VisualReading, type WalletReading,
 } from '../contracts/schemas';
+import type { RejectionVerdict } from '../scenario2/RejectionDetector';
 
 /** C16 */
 export interface InitialState {
@@ -24,6 +25,8 @@ export interface RoundTrace {
   spins: SpinRecord[];
   outcome: 'settled' | 'rejected' | 'timeout';
   capture?: { path: string; t: number; triggerEvent: string };
+  /** Escenario 2: veredicto del detector de rechazo y borrador del contrato. */
+  rejection?: RejectionVerdict;
 }
 
 export interface RoundInputs {

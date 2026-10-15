@@ -10,7 +10,7 @@
     "currencySymbol": "€",
     "numberFormat": { "decimal": ",", "thousands": ".", "alwaysDecimals": true },
     "texts": {
-      "insufficientBalance": ["saldo insuficiente", "fondos insuficientes", "sin fondos", "insuficiente", "no tienes suficiente"]
+      "insufficientBalance": ["saldo insuficiente", "fondos insuficientes", "sin fondos", "insuficiente", "no tienes suficiente", "no tienes saldo suficiente", "saldo no es suficiente", "no dispones de saldo suficiente"]
     },
     "credentials": { "userEnv": "BETSSON_ES_USER", "passEnv": "BETSSON_ES_PASS" },
     "noBalanceCredentials": { "userEnv": "BETSSON_ES_EMPTY_USER", "passEnv": "BETSSON_ES_EMPTY_PASS" }

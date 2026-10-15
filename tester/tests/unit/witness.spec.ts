@@ -11,7 +11,7 @@ import { loadRunConfig } from '../../src/config/RunConfig';
 import { VisualReading, type RunConfig, type VisualField } from '../../src/contracts/schemas';
 import { OcrEngine } from '../../src/vision/OcrEngine';
 import { locateRois } from '../../src/vision/RoiLocator';
-import { ScreenWitness, type WitnessRequest } from '../../src/vision/ScreenWitness';
+import { detectLanguage, ScreenWitness, type WitnessRequest } from '../../src/vision/ScreenWitness';
 import { makeFakeGame } from './fixtures/fakeGame';
 import { makeScreen } from './fixtures/fakeScreen';
 
@@ -156,6 +156,14 @@ test('juego simulado con aviso: mensaje en español y apuesta 0,20 €', async (
   expectContract(readings);
   expect(by(readings, 'message').language).toBe('es');
   expect(by(readings, 'bet').value).toBe(20);
+});
+
+test('idioma del aviso: tolera errores del OCR pero solo con palabras completas', () => {
+  expect(detectLanguage('Sald0 insuficlente', cfg2).language).toBe('es'); // dos errores del OCR
+  expect(detectLanguage('FONDOS INSUFlCIENTES', cfg2).language).toBe('es');
+  expect(detectLanguage('Suficiente por hoy', cfg2).language).toBeUndefined(); // «suficiente» no es «insuficiente»
+  expect(detectLanguage('Deposita para seguir jugando', cfg2).language).toBeUndefined(); // «deposita» no es «deposit»
+  expect(detectLanguage('lnsufficient funds', cfg2).language).toBe('en');
 });
 
 test('OCR sin cargar → no lanza, motivo claro', async () => {

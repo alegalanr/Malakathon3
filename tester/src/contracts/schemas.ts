@@ -87,6 +87,7 @@ export const SpinRecord = z.object({
   balanceAfterSpin: Cents.optional(),
   win: Cents.optional(), // tw
   needsCollect: z.boolean(), // na = c
+  nextAction: z.string().optional(), // na en bruto: s, c… (otro valor = free spins o bonus)
   collectBalance: Cents.optional(),
   status: z.number(),
   error: z.string().optional(),

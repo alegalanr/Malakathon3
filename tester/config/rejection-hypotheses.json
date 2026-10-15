@@ -1,0 +1,11 @@
+{
+  "$comment": "HIPÓTESIS de cómo se ve un rechazo por saldo insuficiente en Pragmatic Play. Se confirma o corrige con la primera ejecución real del escenario 2 (reports/es-insufficient-balance/rejection-contract.json). Al confirmarlo, cambia status a 'confirmed' y deja solo lo que se haya visto.",
+  "status": "hypothesis",
+  "events": {
+    "namePatterns": ["nomoney", "no_money", "notenough", "not_enough", "insufficient", "lowbalance", "low_balance"],
+    "payloadPatterns": ["insufficient", "not enough", "no money", "nomoney", "saldo insuficiente", "fondos insuficientes", "balance too low"]
+  },
+  "network": {
+    "errorKeys": ["err", "error", "errorcode", "error_code", "frozen", "msg_code"]
+  }
+}
