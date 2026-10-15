@@ -8,8 +8,11 @@ import type { GameHandle } from './GameFrame';
 export async function perform(page: Page, game: GameHandle, action: ActionRecord['action'], control: Control): Promise<ActionRecord> {
   const t = Date.now();
   if (control.method === 'key') {
-    // El foco tiene que estar en el juego para que la tecla le llegue
-    await game.element.focus().catch(() => {});
+    // El foco tiene que estar en el juego para que la tecla le llegue. ✔ (15/10) En betsson.es el juego va en
+    // un iframe dentro de otro: se enfoca el más interno (enfocar el exterior le quitaría el foco al juego).
+    const inner = game.frame.locator('iframe').first();
+    if (await inner.count().catch(() => 0)) await inner.focus().catch(() => {});
+    else await game.element.focus().catch(() => {});
     await page.keyboard.press(control.key ?? 'Space');
     return { action, method: 'key', key: control.key ?? 'Space', t };
   }

@@ -94,6 +94,13 @@ Qué funciona y quién está con cada parte. Cada agente actualiza **solo su sec
 - **Cómo:** `tester/control/` (panel en directo en :8095, sin el modo UI de Playwright) sobre la maqueta `tester/mock/` en modo real; canal en directo `tester/src/live/LiveFeed.ts`; agilidad en F1 y login reutilizado. Detalle en [tester/README.md](tester/README.md#centro-de-control-landing-de-la-integración).
 - **Evidencia:** desde el panel, escenario 1 8/8 y escenario 2 6/6; cada fallo provocado lo caza su check (`S1-BETSSON-BALANCE`, `S1-CURRENCY`, `S2-MSG-LANG-VISIBLE`); ronda de 26,1 s a 11,2 s; 61 tests unitarios en verde.
 
+## Tester contra betsson.es real (login manual, sesión DGOJ, carga del juego)
+
+- **Estado:** 🟡
+- **Quién:** Paola
+- **Cómo:** login manual (el anti-bot de Group-IB bloquea el login automatizado; lo indican los mentores): `tester/scripts/save-session.mjs` + `MANUAL_LOGIN=1`. Sesión de juego DGOJ («Atención» → formulario 5 Horas / 100 % → «Iniciar sesión»). Carga del juego de 75-133 s a ~21 s (caché de recursos en `.cache/assets`, traza desde READY, sin recarga con `?gameAction=play`). Intro de Pragmatic cerrada por OCR, apuesta inicial de `doInit`, Espacio al iframe interno, `DRY_RUN=1` para ensayar sin apostar.
+- **Evidencia:** prueba real del escenario 1 en Bubble Up (15/10, 4,00 €): 6 de 8 checks PASS (ronda empezada y terminada, apuesta evento = red, moneda, saldo del juego 59,50 → 55,50 € = red, saldo de Betsson 55,50 €). Fallaban las dos lecturas de pantalla (apuesta y rid): con las variantes invertidas ×8/×5 del preprocesado leen «4,00 €» y el rid en las capturas reales, pero falta repetirlo en real tras fusionar con el testigo de consenso de main.
+
 ## Pitch
 
 - **Estado:** ⬜

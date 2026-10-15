@@ -1,0 +1,556 @@
+{
+  "schemaVersion": 1,
+  "runId": "2026-10-15T17-31-26-296Z-mock-insufficient-balance",
+  "mode": "real",
+  "market": "mock",
+  "scenario": "insufficient-balance",
+  "game": {
+    "name": "Bubble Up",
+    "provider": "pragmatic",
+    "sender": "vs20bblup_cv116"
+  },
+  "startedAt": "2026-10-15T17:31:26.296Z",
+  "finishedAt": "2026-10-15T17:31:43.244Z",
+  "phases": [
+    {
+      "phase": "F0",
+      "name": "Preparación",
+      "status": "ok",
+      "startedAt": 1792085486296,
+      "endedAt": 1792085486923,
+      "produced": [
+        "config",
+        "evidence",
+        "ocr"
+      ]
+    },
+    {
+      "phase": "F1",
+      "name": "Sesión",
+      "status": "ok",
+      "startedAt": 1792085486924,
+      "endedAt": 1792085487069,
+      "produced": [
+        "session",
+        "wallet: primera lectura"
+      ]
+    },
+    {
+      "phase": "F2",
+      "name": "Escucha",
+      "status": "ok",
+      "startedAt": 1792085487071,
+      "endedAt": 1792085487105,
+      "produced": [
+        "listeners"
+      ]
+    },
+    {
+      "phase": "F3",
+      "name": "Juego listo",
+      "status": "ok",
+      "startedAt": 1792085487106,
+      "endedAt": 1792085493724,
+      "produced": [
+        "game",
+        "READY"
+      ]
+    },
+    {
+      "phase": "F4",
+      "name": "Controles",
+      "status": "ok",
+      "startedAt": 1792085493725,
+      "endedAt": 1792085493726,
+      "produced": [
+        "controls"
+      ]
+    },
+    {
+      "phase": "F5",
+      "name": "Estado inicial",
+      "status": "ok",
+      "startedAt": 1792085493726,
+      "endedAt": 1792085493824,
+      "produced": [
+        "initial"
+      ]
+    },
+    {
+      "phase": "F6",
+      "name": "Acción del jugador",
+      "status": "ok",
+      "startedAt": 1792085493825,
+      "endedAt": 1792085493957,
+      "produced": [
+        "action"
+      ]
+    },
+    {
+      "phase": "F7",
+      "name": "Rechazo",
+      "status": "ok",
+      "startedAt": 1792085493958,
+      "endedAt": 1792085495470,
+      "produced": [
+        "trace"
+      ]
+    },
+    {
+      "phase": "F8",
+      "name": "Testigo visual",
+      "status": "ok",
+      "startedAt": 1792085495471,
+      "endedAt": 1792085497156,
+      "produced": [
+        "visual"
+      ]
+    },
+    {
+      "phase": "F9",
+      "name": "Cartera final",
+      "status": "ok",
+      "startedAt": 1792085497157,
+      "endedAt": 1792085502906,
+      "produced": [
+        "betssonAfter"
+      ]
+    },
+    {
+      "phase": "F10",
+      "name": "Ensamblado de la ronda",
+      "status": "ok",
+      "startedAt": 1792085502907,
+      "endedAt": 1792085502929,
+      "produced": [
+        "round",
+        "rejection-contract"
+      ]
+    },
+    {
+      "phase": "F11",
+      "name": "Validación",
+      "status": "ok",
+      "startedAt": 1792085502930,
+      "endedAt": 1792085502930,
+      "produced": [
+        "checks"
+      ]
+    },
+    {
+      "phase": "F12",
+      "name": "Evidencia e informe",
+      "status": "ok",
+      "startedAt": 1792085502981,
+      "endedAt": 1792085503244,
+      "produced": [
+        "report"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "S2-REJECTED",
+      "title": "Tirada rechazada",
+      "scenario": "insufficient-balance",
+      "market": "mock",
+      "result": "PASS",
+      "expected": "ningún ROUND_STARTED con cobro ni doSpin cobrado",
+      "observed": "0 ROUND_STARTED · 0 doSpin cobrados · detector: rejected (señales: pantalla)",
+      "sources": [
+        "event",
+        "network"
+      ],
+      "evidence": [
+        "evidence/rejected.png"
+      ],
+      "message": "La tirada no se completó como tirada pagada"
+    },
+    {
+      "id": "S2-MSG-LANG-VISIBLE",
+      "title": "Mensaje en el idioma esperado",
+      "scenario": "insufficient-balance",
+      "market": "mock",
+      "result": "PASS",
+      "expected": "aviso de saldo insuficiente en «es» (saldo insuficiente / fondos insuficientes / sin fondos / insuficiente / no tienes suficiente / no tienes saldo suficiente / saldo no es suficiente / no dispones de saldo suficiente)",
+      "observed": "«Saldo insuficiente No tienes suficiente saldo para esta apues» → idioma es",
+      "sources": [
+        "screen"
+      ],
+      "evidence": [
+        "evidence/crop-message-cambio-de-pantalla.png",
+        "evidence/rejected.png"
+      ],
+      "message": "El jugador ve el aviso en el idioma del mercado"
+    },
+    {
+      "id": "S2-BET-VISIBLE",
+      "title": "Apuesta mostrada",
+      "scenario": "insufficient-balance",
+      "market": "mock",
+      "result": "PASS",
+      "expected": "1,00 € (último BET_CHANGED)",
+      "observed": "«1,00€» → 1,00 €",
+      "sources": [
+        "screen",
+        "event"
+      ],
+      "evidence": [
+        "evidence/crop-bet-cambio-de-pantalla.png",
+        "evidence/rejected.png"
+      ],
+      "message": "La apuesta mostrada es la intentada"
+    },
+    {
+      "id": "S2-CURRENCY",
+      "title": "Moneda correcta",
+      "scenario": "insufficient-balance",
+      "market": "mock",
+      "result": "PASS",
+      "expected": "EUR",
+      "observed": "juego EUR · cartera EUR · pantalla EUR",
+      "sources": [
+        "event",
+        "wallet",
+        "screen"
+      ],
+      "evidence": [
+        "evidence/crop-bet-cambio-de-pantalla.png"
+      ],
+      "message": "Todas las fuentes muestran la moneda del mercado"
+    },
+    {
+      "id": "S2-BETSSON-UNCHANGED",
+      "title": "Saldo de Betsson sin cambios",
+      "scenario": "insufficient-balance",
+      "market": "mock",
+      "result": "PASS",
+      "expected": "0,50 € (sin cambios)",
+      "observed": "0,50 €",
+      "sources": [
+        "wallet"
+      ],
+      "evidence": [
+        "evidence/wallet-after.png"
+      ],
+      "message": "La cartera no cambió"
+    },
+    {
+      "id": "S2-GAME-UNCHANGED",
+      "title": "Saldo del juego sin cambios",
+      "scenario": "insufficient-balance",
+      "market": "mock",
+      "result": "PASS",
+      "expected": "0,50 € (ningún BALANCE distinto)",
+      "observed": "0,50 €",
+      "sources": [
+        "event"
+      ],
+      "evidence": [],
+      "message": "El saldo del juego no cambió"
+    }
+  ],
+  "round": {
+    "rid": {},
+    "bet": {
+      "event": 100,
+      "screen": 100
+    },
+    "win": {},
+    "balanceBefore": {
+      "event": 50
+    },
+    "balanceAfter": {
+      "event": 50
+    },
+    "betsson": {
+      "before": {
+        "amount": 50,
+        "currency": "EUR",
+        "t": 1792085492836,
+        "source": "api"
+      },
+      "after": {
+        "amount": 50,
+        "currency": "EUR",
+        "t": 1792085502835,
+        "source": "api"
+      }
+    },
+    "currency": {
+      "event": "EUR",
+      "wallet": "EUR",
+      "screen": "EUR"
+    },
+    "message": {
+      "text": "saldo insuficiente no tienes suficiente saldo para esta apues",
+      "language": "es"
+    },
+    "startedAt": 1792085493924,
+    "findings": []
+  },
+  "visual": [
+    {
+      "field": "message",
+      "roi": {
+        "rx": 0.12,
+        "ry": 0.18,
+        "rw": 0.76,
+        "rh": 0.64,
+        "anchor": "centro"
+      },
+      "attempts": 1,
+      "raw": "Saldo insuficiente No tienes suficiente saldo para esta apues",
+      "value": "saldo insuficiente no tienes suficiente saldo para esta apues",
+      "confidence": 0.99129342277095,
+      "language": "es",
+      "cropPath": "evidence/crop-message-cambio-de-pantalla.png"
+    },
+    {
+      "field": "bet",
+      "roi": {
+        "rx": 0.7175,
+        "ry": 0.9027979066022545,
+        "rw": 0.11409090909090909,
+        "rh": 0.07725442834138471,
+        "anchor": "APUESTA"
+      },
+      "attempts": 2,
+      "raw": "1,00€",
+      "value": 100,
+      "confidence": 0.9615367813110351,
+      "currencySymbol": "€",
+      "cropPath": "evidence/crop-bet-cambio-de-pantalla.png"
+    }
+  ],
+  "timeline": [
+    {
+      "t": 1792085486296,
+      "source": "phase",
+      "type": "F0 Preparación",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085486924,
+      "source": "phase",
+      "type": "F1 Sesión",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085486961,
+      "source": "note",
+      "type": "cookies",
+      "summary": "consentimiento ya guardado (sin banner)"
+    },
+    {
+      "t": 1792085486963,
+      "source": "wallet",
+      "type": "balance",
+      "summary": "50 EUR"
+    },
+    {
+      "t": 1792085487071,
+      "source": "phase",
+      "type": "F2 Escucha",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085487106,
+      "source": "phase",
+      "type": "F3 Juego listo",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085487840,
+      "source": "wallet",
+      "type": "balance",
+      "summary": "50 EUR"
+    },
+    {
+      "t": 1792085487844,
+      "source": "note",
+      "type": "juego",
+      "summary": "«Bubble Up» abierto por buscador"
+    },
+    {
+      "t": 1792085487909,
+      "source": "note",
+      "type": "Real Play",
+      "summary": "botón «Jugar»"
+    },
+    {
+      "t": 1792085488038,
+      "source": "event",
+      "type": "UNKNOWN(gameLoadingStarted)",
+      "summary": ""
+    },
+    {
+      "t": 1792085489240,
+      "source": "event",
+      "type": "READY ← gameLoadingEnded",
+      "summary": ""
+    },
+    {
+      "t": 1792085489242,
+      "source": "event",
+      "type": "BALANCE ← updateBalance",
+      "summary": "amount=50 currency=EUR"
+    },
+    {
+      "t": 1792085489243,
+      "source": "event",
+      "type": "UNKNOWN(betInfo)",
+      "summary": ""
+    },
+    {
+      "t": 1792085489244,
+      "source": "event",
+      "type": "UNKNOWN(betMultiplier)",
+      "summary": ""
+    },
+    {
+      "t": 1792085489245,
+      "source": "event",
+      "type": "BET_CHANGED ← betChanged",
+      "summary": "bet=100"
+    },
+    {
+      "t": 1792085492047,
+      "source": "note",
+      "type": "sesión de juego DGOJ",
+      "summary": "confirmed"
+    },
+    {
+      "t": 1792085492836,
+      "source": "wallet",
+      "type": "balance",
+      "summary": "50 EUR"
+    },
+    {
+      "t": 1792085493725,
+      "source": "phase",
+      "type": "F4 Controles",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085493726,
+      "source": "phase",
+      "type": "F5 Estado inicial",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085493822,
+      "source": "note",
+      "type": "antes",
+      "summary": "B0=50 EUR · juego=50 EUR · apuesta=100 (evento BET_CHANGED)"
+    },
+    {
+      "t": 1792085493823,
+      "source": "note",
+      "type": "precondición de saldo",
+      "summary": "saldo 50 < apuesta 100 céntimos: la cuenta está preparada para el rechazo"
+    },
+    {
+      "t": 1792085493825,
+      "source": "phase",
+      "type": "F6 Acción del jugador",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085493924,
+      "source": "action",
+      "type": "spin",
+      "summary": "key Space"
+    },
+    {
+      "t": 1792085493958,
+      "source": "phase",
+      "type": "F7 Rechazo",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085495464,
+      "source": "note",
+      "type": "rechazo",
+      "summary": "rejected (confianza medium): la pantalla cambió a los 688 ms (aviso)"
+    },
+    {
+      "t": 1792085495471,
+      "source": "phase",
+      "type": "F8 Testigo visual",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085497154,
+      "source": "screen",
+      "type": "lectura message",
+      "summary": "«Saldo insuficiente No tienes suficiente saldo para esta apues» → saldo insuficiente no tienes suficiente saldo para esta apues (confianza 0.99)"
+    },
+    {
+      "t": 1792085497155,
+      "source": "screen",
+      "type": "lectura bet",
+      "summary": "«1,00€» → 100 (confianza 0.96)"
+    },
+    {
+      "t": 1792085497157,
+      "source": "phase",
+      "type": "F9 Cartera final",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085497839,
+      "source": "wallet",
+      "type": "balance",
+      "summary": "50 EUR"
+    },
+    {
+      "t": 1792085502835,
+      "source": "wallet",
+      "type": "balance",
+      "summary": "50 EUR"
+    },
+    {
+      "t": 1792085502907,
+      "source": "phase",
+      "type": "F10 Ensamblado de la ronda",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085502930,
+      "source": "phase",
+      "type": "F11 Validación",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085502981,
+      "source": "phase",
+      "type": "F12 Evidencia e informe",
+      "summary": "ok"
+    }
+  ],
+  "artifacts": {
+    "screenshots": [
+      {
+        "label": "Casino con la sesión iniciada",
+        "path": "evidence/casino.png",
+        "t": 1792085486996
+      },
+      {
+        "label": "Juego en reposo (F5)",
+        "path": "evidence/idle.png",
+        "t": 1792085493726
+      },
+      {
+        "label": "Aviso tras el intento",
+        "path": "evidence/rejected.png",
+        "t": 1792085494612
+      },
+      {
+        "label": "Betsson tras la ronda (B1)",
+        "path": "evidence/wallet-after.png",
+        "t": 1792085502835
+      }
+    ]
+  }
+}

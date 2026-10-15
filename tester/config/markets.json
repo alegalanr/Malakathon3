@@ -152,15 +152,7 @@
       "spa"
     ],
     "minConfidence": 0.6,
-    "maxAttempts": 3,
-    "anchors": {
-      "bet": [
-        "APUESTA",
-        "BET"
-      ],
-      "rid": [
-        "#"
-      ]
-    }
+    "maxAttempts": 6,
+    "anchors": { "bet": ["APUESTA", "BET"], "rid": ["#"] }
   }
 }

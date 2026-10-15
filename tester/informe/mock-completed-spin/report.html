@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tirada completada · mock · PASS</title>
+<style>
+:root{--bg:#fff;--fg:#1b1f24;--muted:#6a737d;--card:#f6f8fa;--line:#d0d7de;--ok:#1a7f37;--okbg:#dafbe1;--ko:#cf222e;--kobg:#ffebe9;--warn:#9a6700;--warnbg:#fff8c5}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--muted:#8b949e;--card:#161b22;--line:#30363d;--ok:#3fb950;--okbg:#12261e;--ko:#f85149;--kobg:#2d1214;--warn:#d29922;--warnbg:#2b2111}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif}
+main{max-width:1200px;margin:0 auto;padding:16px}h1{margin:.2em 0}h2{margin-top:2em;border-bottom:1px solid var(--line);padding-bottom:.3em}
+.banner{background:var(--warnbg);color:var(--warn);border:1px solid var(--warn);padding:10px 14px;border-radius:8px;font-weight:600}
+.verdict{display:inline-block;padding:4px 12px;border-radius:999px;font-weight:700}.verdict.ok{background:var(--okbg);color:var(--ok)}.verdict.ko{background:var(--kobg);color:var(--ko)}
+.meta{color:var(--muted)}.muted{color:var(--muted)}code{font-size:.85em}
+.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+tr.ok td.res{color:var(--ok);font-weight:700}tr.ko td.res{color:var(--ko);font-weight:700}tr.msg td{border-bottom:2px solid var(--line);color:var(--muted);padding-top:0}
+.tag{display:inline-block;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:0 6px;font-size:12px}
+td.agree{background:var(--okbg)}td.disagree{background:var(--kobg)}td.num{white-space:nowrap;font-variant-numeric:tabular-nums}
+img.thumb{max-width:110px;max-height:70px;border:1px solid var(--line);border-radius:4px}img.crop{max-width:100%;max-height:120px;border:1px solid var(--line);background:#fff}
+img.shot{max-width:100%;border:1px solid var(--line);border-radius:6px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+figure{margin:0;background:var(--card);padding:8px;border-radius:8px}figcaption{font-size:13px;margin-top:4px}
+.ph{list-style:none}.ph.failed{color:var(--ko)}.ph.skipped{color:var(--muted)}ul{padding-left:0}
+</style></head><body><main>
+
+
+<h1>Tirada completada · mock <span class="verdict ok">✅ PASS</span></h1>
+<p class="meta">Bubble Up (Pragmatic Play, vs20bblup_cv116) · 2026-10-15T17:32:01.222Z · 12 s · <code>2026-10-15T17-32-01-222Z-mock-completed-spin</code></p>
+<p><strong>8 de 8 PASS</strong></p>
+
+<h2>Checks</h2>
+<div class="scroll"><table><thead><tr><th>Resultado</th><th>Check</th><th>Esperado</th><th>Obtenido</th><th>Fuentes</th><th>Evidencias</th></tr></thead>
+<tbody><tr class="ok">
+  <td class="res">✅ PASS</td>
+  <td><strong>La tirada empezó</strong><br><code>S1-ROUND-STARTED</code></td>
+  <td>ROUND_STARTED después de la acción del jugador</td><td>ROUND_STARTED a los 40 ms (key Space)</td>
+  <td><span class="tag">Evento</span></td>
+  <td class="ev"><a href="evidence/idle.png"><img class="thumb" src="evidence/idle.png" alt="S1-ROUND-STARTED" loading="lazy"></a></td>
+</tr><tr class="msg"><td></td><td colspan="5">El juego confirmó con su evento que la tirada empezó por nuestra acción</td></tr>
+<tr class="ok">
+  <td class="res">✅ PASS</td>
+  <td><strong>La tirada terminó</strong><br><code>S1-ROUND-ENDED</code></td>
+  <td>SPIN_ENDED y ROUND_ENDED (resultShown)</td><td>SPIN_ENDED · ROUND_ENDED</td>
+  <td><span class="tag">Evento</span></td>
+  <td class="ev"><a href="evidence/settled.png"><img class="thumb" src="evidence/settled.png" alt="S1-ROUND-ENDED" loading="lazy"></a></td>
+</tr><tr class="msg"><td></td><td colspan="5">La ronda terminó y el resultado se mostró al jugador</td></tr>
+<tr class="ok">
+  <td class="res">✅ PASS</td>
+  <td><strong>Apuesta usada coherente</strong><br><code>S1-BET-USED</code></td>
+  <td>evento = c×l de doSpin = último BET_CHANGED ≤ 5,00 €</td><td>evento 1,00 € · red 1,00 € · BET_CHANGED 1,00 €</td>
+  <td><span class="tag">Evento</span> <span class="tag">Red</span></td>
+  <td class="ev">—</td>
+</tr><tr class="msg"><td></td><td colspan="5">Todas las fuentes coinciden</td></tr>
+<tr class="ok">
+  <td class="res">✅ PASS</td>
+  <td><strong>Apuesta mostrada = apuesta usada</strong><br><code>S1-BET-VISIBLE</code></td>
+  <td>1,00 € en pantalla (= evento = red)</td><td>«1,00€» → 1,00 € (confianza 0.96)</td>
+  <td><span class="tag">Pantalla</span> <span class="tag">Evento</span> <span class="tag">Red</span></td>
+  <td class="ev"><a href="evidence/crop-bet-round-ended.png"><img class="thumb" src="evidence/crop-bet-round-ended.png" alt="S1-BET-VISIBLE" loading="lazy"></a> <a href="evidence/settled.png"><img class="thumb" src="evidence/settled.png" alt="S1-BET-VISIBLE" loading="lazy"></a></td>
+</tr><tr class="msg"><td></td><td colspan="5">La apuesta que ve el jugador es la que se cobró</td></tr>
+<tr class="ok">
+  <td class="res">✅ PASS</td>
+  <td><strong>Moneda correcta</strong><br><code>S1-CURRENCY</code></td>
+  <td>EUR</td><td>juego EUR · cartera EUR · pantalla EUR</td>
+  <td><span class="tag">Evento</span> <span class="tag">Cartera</span> <span class="tag">Pantalla</span></td>
+  <td class="ev"><a href="evidence/crop-bet-round-ended.png"><img class="thumb" src="evidence/crop-bet-round-ended.png" alt="S1-CURRENCY" loading="lazy"></a></td>
+</tr><tr class="msg"><td></td><td colspan="5">Todas las fuentes muestran la moneda del mercado</td></tr>
+<tr class="ok">
+  <td class="res">✅ PASS</td>
+  <td><strong>Saldo del juego coherente</strong><br><code>S1-GAME-BALANCE</code></td>
+  <td>100,00 € = 99,00 € − 1,00 € + 2,00 €</td><td>evento 100,00 € · red 100,00 €</td>
+  <td><span class="tag">Evento</span> <span class="tag">Red</span></td>
+  <td class="ev"><a href="evidence/settled.png"><img class="thumb" src="evidence/settled.png" alt="S1-GAME-BALANCE" loading="lazy"></a></td>
+</tr><tr class="msg"><td></td><td colspan="5">Cuadra con la fórmula y con el servidor</td></tr>
+<tr class="ok">
+  <td class="res">✅ PASS</td>
+  <td><strong>Saldo de Betsson cuadra</strong><br><code>S1-BETSSON-BALANCE</code></td>
+  <td>100,00 € = 99,00 € − 1,00 € + 2,00 €</td><td>100,00 €</td>
+  <td><span class="tag">Cartera</span></td>
+  <td class="ev"><a href="evidence/wallet-after.png"><img class="thumb" src="evidence/wallet-after.png" alt="S1-BETSSON-BALANCE" loading="lazy"></a></td>
+</tr><tr class="msg"><td></td><td colspan="5">La cartera tras la ronda coincide con la fórmula</td></tr>
+<tr class="ok">
+  <td class="res">✅ PASS</td>
+  <td><strong>Ronda identificada en pantalla</strong><br><code>S1-RID-VISIBLE</code></td>
+  <td>#658268121 (rid de doSpin)</td><td>«#658268121» → 658268121</td>
+  <td><span class="tag">Pantalla</span> <span class="tag">Red</span></td>
+  <td class="ev"><a href="evidence/crop-rid-round-ended.png"><img class="thumb" src="evidence/crop-rid-round-ended.png" alt="S1-RID-VISIBLE" loading="lazy"></a> <a href="evidence/settled.png"><img class="thumb" src="evidence/settled.png" alt="S1-RID-VISIBLE" loading="lazy"></a></td>
+</tr><tr class="msg"><td></td><td colspan="5">La ronda que vio el jugador es la que procesó el servidor</td></tr></tbody></table></div>
+
+<h2>Un dato, varias fuentes</h2>
+<div class="scroll"><table><thead><tr><th></th><th>Evento</th><th>Red</th><th>Cartera</th><th>Pantalla</th></tr></thead><tbody><tr><th>Apuesta</th><td class="agree">1,00 €</td><td class="agree">1,00 €</td><td class="muted">—</td><td class="agree">1,00 €</td></tr>
+<tr><th>Premio</th><td class="agree">2,00 €</td><td class="agree">2,00 €</td><td class="muted">—</td><td class="muted">—</td></tr>
+<tr><th>Saldo antes (juego)</th><td class="agree">99,00 €</td><td class="muted">—</td><td class="muted">—</td><td class="muted">—</td></tr>
+<tr><th>Saldo después (juego)</th><td class="agree">100,00 €</td><td class="agree">100,00 €</td><td class="muted">—</td><td class="muted">—</td></tr>
+<tr><th>Saldo Betsson</th><td class="muted">—</td><td class="muted">—</td><td class="agree">99,00 €</td><td class="muted">—</td></tr>
+<tr><th>Saldo Betsson después</th><td class="muted">—</td><td class="muted">—</td><td class="agree">100,00 €</td><td class="muted">—</td></tr>
+<tr><th>Moneda</th><td class="agree">EUR</td><td class="muted">—</td><td class="agree">EUR</td><td class="agree">EUR</td></tr>
+<tr><th>Ronda (rid)</th><td class="muted">—</td><td class="agree">658268121</td><td class="muted">—</td><td class="agree">658268121</td></tr></tbody></table></div>
+<p class="muted">Sin hallazgos: todas las invariantes se cumplen.</p>
+
+<h2>Lo que vio el tester</h2>
+<figure class="reading"><a href="evidence/crop-rid-round-ended.png"><img class="crop" src="evidence/crop-rid-round-ended.png" alt="rid" loading="lazy"></a>
+<figcaption><strong>rid</strong> · leído «#658268121» → <strong>658268121</strong>
+· confianza 0.99 · 2 intento(s)</figcaption></figure>
+<figure class="reading"><a href="evidence/crop-bet-round-ended.png"><img class="crop" src="evidence/crop-bet-round-ended.png" alt="bet" loading="lazy"></a>
+<figcaption><strong>bet</strong> · leído «1,00€» → <strong>1,00 €</strong>
+· confianza 0.96 · 2 intento(s)</figcaption></figure>
+
+<h2>Capturas clave</h2>
+<div class="grid"><figure><a href="evidence/casino.png"><img class="shot" src="evidence/casino.png" alt="Casino con la sesión iniciada" loading="lazy"></a><figcaption>Casino con la sesión iniciada</figcaption></figure>
+<figure><a href="evidence/idle.png"><img class="shot" src="evidence/idle.png" alt="Juego en reposo (F5)" loading="lazy"></a><figcaption>Juego en reposo (F5)</figcaption></figure>
+<figure><a href="evidence/settled.png"><img class="shot" src="evidence/settled.png" alt="Pantalla liquidada (resultShown)" loading="lazy"></a><figcaption>Pantalla liquidada (resultShown)</figcaption></figure>
+<figure><a href="evidence/wallet-after.png"><img class="shot" src="evidence/wallet-after.png" alt="Betsson tras la ronda (B1)" loading="lazy"></a><figcaption>Betsson tras la ronda (B1)</figcaption></figure></div>
+
+<h2>Fases</h2>
+<ul><li class="ph ok"><code>F0</code> Preparación · <strong>ok</strong> <span class="muted">(0.5 s)</span></li>
+<li class="ph ok"><code>F1</code> Sesión · <strong>ok</strong> <span class="muted">(0.2 s)</span></li>
+<li class="ph ok"><code>F2</code> Escucha · <strong>ok</strong> <span class="muted">(0.0 s)</span></li>
+<li class="ph ok"><code>F3</code> Juego listo · <strong>ok</strong> <span class="muted">(6.8 s)</span></li>
+<li class="ph ok"><code>F4</code> Controles · <strong>ok</strong> <span class="muted">(0.0 s)</span></li>
+<li class="ph ok"><code>F5</code> Estado inicial · <strong>ok</strong> <span class="muted">(0.1 s)</span></li>
+<li class="ph ok"><code>F6</code> Acción del jugador · <strong>ok</strong> <span class="muted">(0.2 s)</span></li>
+<li class="ph ok"><code>F7</code> Ronda y liquidación · <strong>ok</strong> <span class="muted">(2.2 s)</span></li>
+<li class="ph ok"><code>F8</code> Testigo visual · <strong>ok</strong> <span class="muted">(0.5 s)</span></li>
+<li class="ph ok"><code>F9</code> Cartera final · <strong>ok</strong> <span class="muted">(1.1 s)</span></li>
+<li class="ph ok"><code>F10</code> Ensamblado de la ronda · <strong>ok</strong> <span class="muted">(0.0 s)</span></li>
+<li class="ph ok"><code>F11</code> Validación · <strong>ok</strong> <span class="muted">(0.0 s)</span></li>
+<li class="ph ok"><code>F12</code> Evidencia e informe · <strong>ok</strong> <span class="muted">(0.4 s)</span></li></ul>
+
+<h2>Línea temporal</h2>
+<div class="scroll"><table><thead><tr><th>t</th><th>Fuente</th><th>Tipo</th><th>Resumen</th></tr></thead><tbody><tr><td class="num">-7.21 s</td><td><span class="tag">note</span></td><td>cookies</td><td>consentimiento ya guardado (sin banner)</td></tr>
+<tr><td class="num">-7.19 s</td><td><span class="tag">wallet</span></td><td>balance</td><td>9900 EUR</td></tr>
+<tr><td class="num">-6.24 s</td><td><span class="tag">note</span></td><td>juego</td><td>«Bubble Up» abierto por buscador</td></tr>
+<tr><td class="num">-6.22 s</td><td><span class="tag">wallet</span></td><td>balance</td><td>9900 EUR</td></tr>
+<tr><td class="num">-6.13 s</td><td><span class="tag">note</span></td><td>Real Play</td><td>botón «Jugar»</td></tr>
+<tr><td class="num">-5.99 s</td><td><span class="tag">event</span></td><td>UNKNOWN(gameLoadingStarted)</td><td></td></tr>
+<tr><td class="num">-4.80 s</td><td><span class="tag">event</span></td><td>READY ← gameLoadingEnded</td><td></td></tr>
+<tr><td class="num">-4.80 s</td><td><span class="tag">event</span></td><td>BALANCE ← updateBalance</td><td>amount=9900 currency=EUR</td></tr>
+<tr><td class="num">-4.79 s</td><td><span class="tag">event</span></td><td>UNKNOWN(betInfo)</td><td></td></tr>
+<tr><td class="num">-4.78 s</td><td><span class="tag">event</span></td><td>UNKNOWN(betMultiplier)</td><td></td></tr>
+<tr><td class="num">-4.78 s</td><td><span class="tag">event</span></td><td>BET_CHANGED ← betChanged</td><td>bet=100</td></tr>
+<tr><td class="num">-1.98 s</td><td><span class="tag">note</span></td><td>sesión de juego DGOJ</td><td>confirmed</td></tr>
+<tr><td class="num">-1.25 s</td><td><span class="tag">wallet</span></td><td>balance</td><td>9900 EUR</td></tr>
+<tr><td class="num">-0.12 s</td><td><span class="tag">note</span></td><td>antes</td><td>B0=9900 EUR · juego=9900 EUR · apuesta=100 (evento BET_CHANGED)</td></tr>
+<tr><td class="num">-0.12 s</td><td><span class="tag">note</span></td><td>precondición de saldo</td><td>saldo 9900 ≥ apuesta 100 céntimos</td></tr>
+<tr><td class="num">0.00 s</td><td><span class="tag">action</span></td><td>spin</td><td>key Space</td></tr>
+<tr><td class="num">0.04 s</td><td><span class="tag">event</span></td><td>ROUND_STARTED ← gameRoundStarted</td><td>bet=100 balanceBefore=9900</td></tr>
+<tr><td class="num">0.05 s</td><td><span class="tag">event</span></td><td>BALANCE ← updateBalance</td><td>amount=9800 currency=EUR</td></tr>
+<tr><td class="num">0.05 s</td><td><span class="tag">network</span></td><td>doSpin</td><td>rid=658268121 apuesta=100 saldo=9800 premio=200 na=c</td></tr>
+<tr><td class="num">0.05 s</td><td><span class="tag">event</span></td><td>UNKNOWN(spinStarted)</td><td></td></tr>
+<tr><td class="num">1.56 s</td><td><span class="tag">event</span></td><td>UNKNOWN(balanceChanged)</td><td></td></tr>
+<tr><td class="num">1.56 s</td><td><span class="tag">event</span></td><td>SPIN_ENDED ← spinEnded</td><td>win=200 balanceAfter=10000</td></tr>
+<tr><td class="num">1.56 s</td><td><span class="tag">event</span></td><td>UNKNOWN(gameRoundEnded)</td><td></td></tr>
+<tr><td class="num">1.57 s</td><td><span class="tag">network</span></td><td>doCollect</td><td>saldo=10000</td></tr>
+<tr><td class="num">2.17 s</td><td><span class="tag">event</span></td><td>UNKNOWN(visualBalanceUpdate)</td><td></td></tr>
+<tr><td class="num">2.17 s</td><td><span class="tag">event</span></td><td>ROUND_ENDED ← resultShown</td><td>win=200 balanceAfter=10000</td></tr>
+<tr><td class="num">2.79 s</td><td><span class="tag">screen</span></td><td>lectura rid</td><td>«#658268121» → 658268121 (confianza 0.99)</td></tr>
+<tr><td class="num">2.79 s</td><td><span class="tag">screen</span></td><td>lectura bet</td><td>«1,00€» → 100 (confianza 0.96)</td></tr>
+<tr><td class="num">3.76 s</td><td><span class="tag">wallet</span></td><td>balance</td><td>10000 EUR</td></tr></tbody></table></div>
+</main></body></html>

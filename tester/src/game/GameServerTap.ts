@@ -13,6 +13,8 @@ const params = (s: string | null | undefined) => new URLSearchParams(s ?? '');
 export class GameServerTap {
   readonly spins: SpinRecord[] = [];
   readonly calls: { t: number; action: string; status: number }[] = [];
+  /** ✔ (15/10) Apuesta con la que arranca el juego, de la respuesta de doInit: c (moneda) × l (líneas). */
+  init?: { bet: number; coin: number; lines: number; t: number };
   private active = false;
   private pending: Promise<void>[] = [];
 
@@ -38,7 +40,6 @@ export class GameServerTap {
     const req = params(r.request().postData());
     const action = req.get('action') ?? '?';
     this.calls.push({ t, action, status: r.status() });
-    if (!/^do(Spin|Collect)$/.test(action)) return;
     let body = '';
     try {
       body = await r.text();
@@ -46,6 +47,18 @@ export class GameServerTap {
       /* la página puede haberse cerrado */
     }
     const res = params(body);
+    if (!/^do(Spin|Collect)$/.test(action)) {
+      // doInit (la acción no siempre viene en la petición; la respuesta la repite)
+      if ((action === 'doInit' || res.get('action') === 'doInit' || !res.has('rid')) && res.has('c') && res.has('l')) {
+        const coin = Number(res.get('c'));
+        const lines = Number(res.get('l'));
+        if (Number.isFinite(coin) && Number.isFinite(lines)) {
+          this.init = { bet: Math.round(coin * lines * 100), coin, lines, t };
+          this.ev.log('network', 'doInit', `apuesta=${this.init.bet} (c=${coin} × l=${lines}) saldo=${eurosToCents(res.get('balance') ?? undefined) ?? '—'}`, this.init, t);
+        }
+      }
+      return;
+    }
     if (action === 'doSpin') {
       const c = Number(req.get('c'));
       const l = Number(req.get('l'));

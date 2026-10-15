@@ -1,0 +1,642 @@
+{
+  "schemaVersion": 1,
+  "runId": "2026-10-15T17-32-01-222Z-mock-completed-spin",
+  "mode": "real",
+  "market": "mock",
+  "scenario": "completed-spin",
+  "game": {
+    "name": "Bubble Up",
+    "provider": "pragmatic",
+    "sender": "vs20bblup_cv116"
+  },
+  "startedAt": "2026-10-15T17:32:01.222Z",
+  "finishedAt": "2026-10-15T17:32:13.476Z",
+  "phases": [
+    {
+      "phase": "F0",
+      "name": "Preparación",
+      "status": "ok",
+      "startedAt": 1792085521228,
+      "endedAt": 1792085521756,
+      "produced": [
+        "config",
+        "evidence",
+        "ocr"
+      ]
+    },
+    {
+      "phase": "F1",
+      "name": "Sesión",
+      "status": "ok",
+      "startedAt": 1792085521761,
+      "endedAt": 1792085521980,
+      "produced": [
+        "session",
+        "wallet: primera lectura"
+      ]
+    },
+    {
+      "phase": "F2",
+      "name": "Escucha",
+      "status": "ok",
+      "startedAt": 1792085521982,
+      "endedAt": 1792085522029,
+      "produced": [
+        "listeners"
+      ]
+    },
+    {
+      "phase": "F3",
+      "name": "Juego listo",
+      "status": "ok",
+      "startedAt": 1792085522030,
+      "endedAt": 1792085528792,
+      "produced": [
+        "game",
+        "READY"
+      ]
+    },
+    {
+      "phase": "F4",
+      "name": "Controles",
+      "status": "ok",
+      "startedAt": 1792085528794,
+      "endedAt": 1792085528795,
+      "produced": [
+        "controls"
+      ]
+    },
+    {
+      "phase": "F5",
+      "name": "Estado inicial",
+      "status": "ok",
+      "startedAt": 1792085528796,
+      "endedAt": 1792085528918,
+      "produced": [
+        "initial"
+      ]
+    },
+    {
+      "phase": "F6",
+      "name": "Acción del jugador",
+      "status": "ok",
+      "startedAt": 1792085528919,
+      "endedAt": 1792085529095,
+      "produced": [
+        "action"
+      ]
+    },
+    {
+      "phase": "F7",
+      "name": "Ronda y liquidación",
+      "status": "ok",
+      "startedAt": 1792085529096,
+      "endedAt": 1792085531302,
+      "produced": [
+        "trace"
+      ]
+    },
+    {
+      "phase": "F8",
+      "name": "Testigo visual",
+      "status": "ok",
+      "startedAt": 1792085531303,
+      "endedAt": 1792085531828,
+      "produced": [
+        "visual"
+      ]
+    },
+    {
+      "phase": "F9",
+      "name": "Cartera final",
+      "status": "ok",
+      "startedAt": 1792085531830,
+      "endedAt": 1792085532888,
+      "produced": [
+        "betssonAfter"
+      ]
+    },
+    {
+      "phase": "F10",
+      "name": "Ensamblado de la ronda",
+      "status": "ok",
+      "startedAt": 1792085532894,
+      "endedAt": 1792085532895,
+      "produced": [
+        "round"
+      ]
+    },
+    {
+      "phase": "F11",
+      "name": "Validación",
+      "status": "ok",
+      "startedAt": 1792085532896,
+      "endedAt": 1792085532898,
+      "produced": [
+        "checks"
+      ]
+    },
+    {
+      "phase": "F12",
+      "name": "Evidencia e informe",
+      "status": "ok",
+      "startedAt": 1792085533039,
+      "endedAt": 1792085533475,
+      "produced": [
+        "report"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "S1-ROUND-STARTED",
+      "title": "La tirada empezó",
+      "scenario": "completed-spin",
+      "market": "mock",
+      "result": "PASS",
+      "expected": "ROUND_STARTED después de la acción del jugador",
+      "observed": "ROUND_STARTED a los 40 ms (key Space)",
+      "sources": [
+        "event"
+      ],
+      "evidence": [
+        "evidence/idle.png"
+      ],
+      "message": "El juego confirmó con su evento que la tirada empezó por nuestra acción"
+    },
+    {
+      "id": "S1-ROUND-ENDED",
+      "title": "La tirada terminó",
+      "scenario": "completed-spin",
+      "market": "mock",
+      "result": "PASS",
+      "expected": "SPIN_ENDED y ROUND_ENDED (resultShown)",
+      "observed": "SPIN_ENDED · ROUND_ENDED",
+      "sources": [
+        "event"
+      ],
+      "evidence": [
+        "evidence/settled.png"
+      ],
+      "message": "La ronda terminó y el resultado se mostró al jugador"
+    },
+    {
+      "id": "S1-BET-USED",
+      "title": "Apuesta usada coherente",
+      "scenario": "completed-spin",
+      "market": "mock",
+      "result": "PASS",
+      "expected": "evento = c×l de doSpin = último BET_CHANGED ≤ 5,00 €",
+      "observed": "evento 1,00 € · red 1,00 € · BET_CHANGED 1,00 €",
+      "sources": [
+        "event",
+        "network"
+      ],
+      "evidence": [],
+      "message": "Todas las fuentes coinciden"
+    },
+    {
+      "id": "S1-BET-VISIBLE",
+      "title": "Apuesta mostrada = apuesta usada",
+      "scenario": "completed-spin",
+      "market": "mock",
+      "result": "PASS",
+      "expected": "1,00 € en pantalla (= evento = red)",
+      "observed": "«1,00€» → 1,00 € (confianza 0.96)",
+      "sources": [
+        "screen",
+        "event",
+        "network"
+      ],
+      "evidence": [
+        "evidence/crop-bet-round-ended.png",
+        "evidence/settled.png"
+      ],
+      "message": "La apuesta que ve el jugador es la que se cobró"
+    },
+    {
+      "id": "S1-CURRENCY",
+      "title": "Moneda correcta",
+      "scenario": "completed-spin",
+      "market": "mock",
+      "result": "PASS",
+      "expected": "EUR",
+      "observed": "juego EUR · cartera EUR · pantalla EUR",
+      "sources": [
+        "event",
+        "wallet",
+        "screen"
+      ],
+      "evidence": [
+        "evidence/crop-bet-round-ended.png"
+      ],
+      "message": "Todas las fuentes muestran la moneda del mercado"
+    },
+    {
+      "id": "S1-GAME-BALANCE",
+      "title": "Saldo del juego coherente",
+      "scenario": "completed-spin",
+      "market": "mock",
+      "result": "PASS",
+      "expected": "100,00 € = 99,00 € − 1,00 € + 2,00 €",
+      "observed": "evento 100,00 € · red 100,00 €",
+      "sources": [
+        "event",
+        "network"
+      ],
+      "evidence": [
+        "evidence/settled.png"
+      ],
+      "message": "Cuadra con la fórmula y con el servidor"
+    },
+    {
+      "id": "S1-BETSSON-BALANCE",
+      "title": "Saldo de Betsson cuadra",
+      "scenario": "completed-spin",
+      "market": "mock",
+      "result": "PASS",
+      "expected": "100,00 € = 99,00 € − 1,00 € + 2,00 €",
+      "observed": "100,00 €",
+      "sources": [
+        "wallet"
+      ],
+      "evidence": [
+        "evidence/wallet-after.png"
+      ],
+      "message": "La cartera tras la ronda coincide con la fórmula"
+    },
+    {
+      "id": "S1-RID-VISIBLE",
+      "title": "Ronda identificada en pantalla",
+      "scenario": "completed-spin",
+      "market": "mock",
+      "result": "PASS",
+      "expected": "#658268121 (rid de doSpin)",
+      "observed": "«#658268121» → 658268121",
+      "sources": [
+        "screen",
+        "network"
+      ],
+      "evidence": [
+        "evidence/crop-rid-round-ended.png",
+        "evidence/settled.png"
+      ],
+      "message": "La ronda que vio el jugador es la que procesó el servidor"
+    }
+  ],
+  "round": {
+    "rid": {
+      "network": "658268121",
+      "screen": "658268121"
+    },
+    "bet": {
+      "event": 100,
+      "network": 100,
+      "screen": 100
+    },
+    "win": {
+      "event": 200,
+      "network": 200
+    },
+    "balanceBefore": {
+      "event": 9900
+    },
+    "balanceAfter": {
+      "event": 10000,
+      "network": 10000
+    },
+    "betsson": {
+      "before": {
+        "amount": 9900,
+        "currency": "EUR",
+        "t": 1792085527789,
+        "source": "api"
+      },
+      "after": {
+        "amount": 10000,
+        "currency": "EUR",
+        "t": 1792085532792,
+        "source": "api"
+      }
+    },
+    "currency": {
+      "event": "EUR",
+      "wallet": "EUR",
+      "screen": "EUR"
+    },
+    "startedAt": 1792085529036,
+    "endedAt": 1792085531211,
+    "findings": []
+  },
+  "visual": [
+    {
+      "field": "rid",
+      "roi": {
+        "rx": 0.007613636363636363,
+        "ry": 0.9547101449275363,
+        "rw": 0.12420454545454546,
+        "rh": 0.04428341384863124,
+        "anchor": "#"
+      },
+      "attempts": 2,
+      "raw": "#658268121",
+      "value": "658268121",
+      "confidence": 0.9894557151794434,
+      "cropPath": "evidence/crop-rid-round-ended.png"
+    },
+    {
+      "field": "bet",
+      "roi": {
+        "rx": 0.7175,
+        "ry": 0.9027979066022545,
+        "rw": 0.11409090909090909,
+        "rh": 0.07725442834138471,
+        "anchor": "APUESTA"
+      },
+      "attempts": 2,
+      "raw": "1,00€",
+      "value": 100,
+      "confidence": 0.9615367813110351,
+      "currencySymbol": "€",
+      "cropPath": "evidence/crop-bet-round-ended.png"
+    }
+  ],
+  "timeline": [
+    {
+      "t": 1792085521228,
+      "source": "phase",
+      "type": "F0 Preparación",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085521761,
+      "source": "phase",
+      "type": "F1 Sesión",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085521830,
+      "source": "note",
+      "type": "cookies",
+      "summary": "consentimiento ya guardado (sin banner)"
+    },
+    {
+      "t": 1792085521842,
+      "source": "wallet",
+      "type": "balance",
+      "summary": "9900 EUR"
+    },
+    {
+      "t": 1792085521982,
+      "source": "phase",
+      "type": "F2 Escucha",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085522030,
+      "source": "phase",
+      "type": "F3 Juego listo",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085522801,
+      "source": "note",
+      "type": "juego",
+      "summary": "«Bubble Up» abierto por buscador"
+    },
+    {
+      "t": 1792085522818,
+      "source": "wallet",
+      "type": "balance",
+      "summary": "9900 EUR"
+    },
+    {
+      "t": 1792085522902,
+      "source": "note",
+      "type": "Real Play",
+      "summary": "botón «Jugar»"
+    },
+    {
+      "t": 1792085523042,
+      "source": "event",
+      "type": "UNKNOWN(gameLoadingStarted)",
+      "summary": ""
+    },
+    {
+      "t": 1792085524235,
+      "source": "event",
+      "type": "READY ← gameLoadingEnded",
+      "summary": ""
+    },
+    {
+      "t": 1792085524240,
+      "source": "event",
+      "type": "BALANCE ← updateBalance",
+      "summary": "amount=9900 currency=EUR"
+    },
+    {
+      "t": 1792085524247,
+      "source": "event",
+      "type": "UNKNOWN(betInfo)",
+      "summary": ""
+    },
+    {
+      "t": 1792085524252,
+      "source": "event",
+      "type": "UNKNOWN(betMultiplier)",
+      "summary": ""
+    },
+    {
+      "t": 1792085524254,
+      "source": "event",
+      "type": "BET_CHANGED ← betChanged",
+      "summary": "bet=100"
+    },
+    {
+      "t": 1792085527058,
+      "source": "note",
+      "type": "sesión de juego DGOJ",
+      "summary": "confirmed"
+    },
+    {
+      "t": 1792085527789,
+      "source": "wallet",
+      "type": "balance",
+      "summary": "9900 EUR"
+    },
+    {
+      "t": 1792085528794,
+      "source": "phase",
+      "type": "F4 Controles",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085528796,
+      "source": "phase",
+      "type": "F5 Estado inicial",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085528914,
+      "source": "note",
+      "type": "antes",
+      "summary": "B0=9900 EUR · juego=9900 EUR · apuesta=100 (evento BET_CHANGED)"
+    },
+    {
+      "t": 1792085528916,
+      "source": "note",
+      "type": "precondición de saldo",
+      "summary": "saldo 9900 ≥ apuesta 100 céntimos"
+    },
+    {
+      "t": 1792085528919,
+      "source": "phase",
+      "type": "F6 Acción del jugador",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085529036,
+      "source": "action",
+      "type": "spin",
+      "summary": "key Space"
+    },
+    {
+      "t": 1792085529076,
+      "source": "event",
+      "type": "ROUND_STARTED ← gameRoundStarted",
+      "summary": "bet=100 balanceBefore=9900"
+    },
+    {
+      "t": 1792085529083,
+      "source": "event",
+      "type": "BALANCE ← updateBalance",
+      "summary": "amount=9800 currency=EUR"
+    },
+    {
+      "t": 1792085529083,
+      "source": "network",
+      "type": "doSpin",
+      "summary": "rid=658268121 apuesta=100 saldo=9800 premio=200 na=c"
+    },
+    {
+      "t": 1792085529085,
+      "source": "event",
+      "type": "UNKNOWN(spinStarted)",
+      "summary": ""
+    },
+    {
+      "t": 1792085529096,
+      "source": "phase",
+      "type": "F7 Ronda y liquidación",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085530597,
+      "source": "event",
+      "type": "UNKNOWN(balanceChanged)",
+      "summary": ""
+    },
+    {
+      "t": 1792085530599,
+      "source": "event",
+      "type": "SPIN_ENDED ← spinEnded",
+      "summary": "win=200 balanceAfter=10000"
+    },
+    {
+      "t": 1792085530601,
+      "source": "event",
+      "type": "UNKNOWN(gameRoundEnded)",
+      "summary": ""
+    },
+    {
+      "t": 1792085530602,
+      "source": "network",
+      "type": "doCollect",
+      "summary": "saldo=10000"
+    },
+    {
+      "t": 1792085531209,
+      "source": "event",
+      "type": "UNKNOWN(visualBalanceUpdate)",
+      "summary": ""
+    },
+    {
+      "t": 1792085531211,
+      "source": "event",
+      "type": "ROUND_ENDED ← resultShown",
+      "summary": "win=200 balanceAfter=10000"
+    },
+    {
+      "t": 1792085531303,
+      "source": "phase",
+      "type": "F8 Testigo visual",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085531826,
+      "source": "screen",
+      "type": "lectura rid",
+      "summary": "«#658268121» → 658268121 (confianza 0.99)"
+    },
+    {
+      "t": 1792085531827,
+      "source": "screen",
+      "type": "lectura bet",
+      "summary": "«1,00€» → 100 (confianza 0.96)"
+    },
+    {
+      "t": 1792085531830,
+      "source": "phase",
+      "type": "F9 Cartera final",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085532792,
+      "source": "wallet",
+      "type": "balance",
+      "summary": "10000 EUR"
+    },
+    {
+      "t": 1792085532894,
+      "source": "phase",
+      "type": "F10 Ensamblado de la ronda",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085532896,
+      "source": "phase",
+      "type": "F11 Validación",
+      "summary": "ok"
+    },
+    {
+      "t": 1792085533039,
+      "source": "phase",
+      "type": "F12 Evidencia e informe",
+      "summary": "ok"
+    }
+  ],
+  "artifacts": {
+    "screenshots": [
+      {
+        "label": "Casino con la sesión iniciada",
+        "path": "evidence/casino.png",
+        "t": 1792085521888
+      },
+      {
+        "label": "Juego en reposo (F5)",
+        "path": "evidence/idle.png",
+        "t": 1792085528796
+      },
+      {
+        "label": "Pantalla liquidada (resultShown)",
+        "path": "evidence/settled.png",
+        "t": 1792085531211
+      },
+      {
+        "label": "Betsson tras la ronda (B1)",
+        "path": "evidence/wallet-after.png",
+        "t": 1792085532792
+      }
+    ]
+  }
+}

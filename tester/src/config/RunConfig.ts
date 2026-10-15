@@ -66,4 +66,6 @@ export const marketFromEnv = (): MarketId => (['es', 'com', 'pe', 'mock'].includ
 export const AUTH_DIR = path.join(__dirname, '..', '..', '.auth');
 export const authFile = (market: MarketId, scenario: Scenario) => path.join(AUTH_DIR, `${market}-${scenario}.json`);
 export const REPORTS_DIR = path.join(__dirname, '..', '..', 'reports');
+/** Caché de recursos estáticos del juego (no se sube: .cache/ está en .gitignore). */
+export const ASSETS_DIR = path.join(__dirname, '..', '..', '.cache', 'assets');
 export const CONTROL_MAPS_DIR = path.join(__dirname, '..', '..', 'control-maps');

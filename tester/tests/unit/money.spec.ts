@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { currencySymbolIn, eurosToCents, formatCents, parseDisplayedAmount } from '../../src/domain/Money';
+import { currencyCode, currencySymbolIn, eurosToCents, formatCents, parseDisplayedAmount } from '../../src/domain/Money';
 
 const ES = { decimal: ',' as const, thousands: '.' as const };
 const COM = { decimal: '.' as const, thousands: ',' as const };
@@ -39,4 +39,16 @@ test('símbolo de moneda y formato', () => {
   expect(formatCents(5850, { numberFormat: ES, currencySymbol: '€' })).toBe('58,50 €');
   expect(formatCents(123456, { numberFormat: ES, currencySymbol: '€' })).toBe('1.234,56 €');
   expect(formatCents(280, { numberFormat: COM, currencySymbol: 'S/' })).toBe('S/ 2.80');
+});
+
+test('moneda del juego («€») y de la cartera («EUR») se comparan por código', () => {
+  expect(currencyCode('€')).toBe('EUR');
+  expect(currencyCode('EUR')).toBe('EUR');
+  expect(currencyCode('S/')).toBe('PEN');
+  expect(currencyCode('eur')).toBe('EUR');
+});
+
+test('importe con texto vecino: varios números es ambiguo (null), la etiqueta no molesta', () => {
+  expect(parseDisplayedAmount('4,00 € 3X', ES)).toBeNull(); // ✔ recorte real de Bubble Up: ante la duda, null
+  expect(parseDisplayedAmount('APUESTA 4,00 €', ES)).toBe(400);
 });
