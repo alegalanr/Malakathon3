@@ -94,8 +94,10 @@ export function evaluateChecks(inp: RuleInput): Check[] {
     const startedPaid = inp.trace?.events.filter((e) => e.type === 'ROUND_STARTED' && (e.data.bet ?? 0) > 0) ?? [];
     const paidSpins = inp.trace?.spins.filter((s) => !s.error) ?? [];
     const rejectedEv = inp.trace?.events.find((e) => e.type === 'REJECTED');
+    const det = inp.trace?.rejection;
+    const detSignals = det ? (Object.entries(det.signals).filter(([, v]) => v).map(([k]) => SIGNAL_LABEL[k]).join(' + ') || 'ninguna') : '';
     add('S2-REJECTED', !!inp.trace && startedPaid.length === 0 && paidSpins.length === 0, 'ningún ROUND_STARTED con cobro ni doSpin cobrado',
-      `${startedPaid.length} ROUND_STARTED · ${paidSpins.length} doSpin cobrados${rejectedEv ? ' · evento de rechazo' : ''}`, ['event', 'network'], [ev.rejected],
+      `${startedPaid.length} ROUND_STARTED · ${paidSpins.length} doSpin cobrados${rejectedEv ? ' · evento de rechazo' : ''}${det ? ` · detector: ${det.outcome} (señales: ${detSignals})` : ''}`, ['event', 'network'], [ev.rejected],
       !inp.trace ? 'No se llegó a intentar la tirada' : startedPaid.length || paidSpins.length ? 'La tirada se cobró' : 'La tirada no se completó como tirada pagada');
 
     const vm = vis('message');
@@ -126,6 +128,8 @@ export function evaluateChecks(inp: RuleInput): Check[] {
   }
   return out;
 }
+
+const SIGNAL_LABEL: Record<string, string> = { event: 'evento', network: 'red', screen: 'pantalla' };
 
 function currencyCheck(r: GameRound | null, cfg: RunConfig) {
   const c = r?.currency ?? {};
