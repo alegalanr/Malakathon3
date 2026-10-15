@@ -10,6 +10,15 @@ import { runScenario } from '../src/scenarios/runScenario';
 import { simulateScenario } from '../src/scenarios/simulateScenario';
 import { writeRunReport } from '../src/report/Report';
 
+/** Sesión del login manual con alguna cookie (global-setup escribe una vacía si no la hay). */
+function hasSavedSession(file: string): boolean {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8')).cookies?.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export function scenarioTest(scenario: Scenario) {
   const market = marketFromEnv();
   const mode = runMode();
@@ -18,10 +27,14 @@ export function scenarioTest(scenario: Scenario) {
 
   test(`${scenario} · ${market} · ${mode}`, async ({ page, context }, testInfo) => {
     const cfg = loadRunConfig(market, scenario, mode);
-    // Sin credenciales no hay nada que probar en real: se salta con el motivo en vez de dar FAIL en cadena
+    // Sin credenciales (o, con login manual, sin sesión guardada) no hay nada que probar en real:
+    // se salta con el motivo en vez de dar FAIL en cadena
+    const manual = process.env.MANUAL_LOGIN === '1';
     test.skip(
-      mode === 'real' && !readCredentials(cfg),
-      `Faltan ${cfg.credentialEnv.userEnv} y ${cfg.credentialEnv.passEnv} (en tester/.env o en el .env de la raíz del repo)`,
+      mode === 'real' && (manual ? !hasSavedSession(state) : !readCredentials(cfg)),
+      manual
+        ? `No hay sesión guardada para ${scenario}: inicia sesión a mano con esa cuenta y ejecuta node tester/scripts/save-session.mjs ${market} ${scenario}`
+        : `Faltan ${cfg.credentialEnv.userEnv} y ${cfg.credentialEnv.passEnv} (en tester/.env o en el .env de la raíz del repo)`,
     );
     const report = mode === 'real' ? await runScenario({ page, context, cfg, testInfo }) : await simulateScenario({ page, cfg });
     const { dir, secrets, contractErrors } = writeRunReport(report, cfg);
