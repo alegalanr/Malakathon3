@@ -10,6 +10,16 @@ import { AUTH_DIR, authFile, loadRunConfig, marketFromEnv, readCredentials, runM
 import { BetssonSite } from './src/site/BetssonSite';
 
 const EMPTY = JSON.stringify({ cookies: [], origins: [] });
+const REUSE_MAX_MIN = 30;
+
+function freshSession(file: string): boolean {
+  try {
+    const recent = Date.now() - fs.statSync(file).mtimeMs < REUSE_MAX_MIN * 60_000;
+    return recent && (JSON.parse(fs.readFileSync(file, 'utf8')).cookies ?? []).length > 0;
+  } catch {
+    return false;
+  }
+}
 
 export default async function globalSetup() {
   fs.mkdirSync(AUTH_DIR, { recursive: true });
@@ -19,10 +29,18 @@ export default async function globalSetup() {
     for (const s of scenarios) fs.writeFileSync(authFile(market, s), EMPTY);
     return;
   }
+  // LOGIN_SCENARIOS: solo las cuentas que se van a usar (el centro de control lanza un escenario cada vez)
+  const wanted = (process.env.LOGIN_SCENARIOS ?? '').split(',').filter(Boolean);
   for (const scenario of scenarios) {
+    if (wanted.length && !wanted.includes(scenario)) continue;
     const cfg = loadRunConfig(market, scenario, 'real');
     const creds = readCredentials(cfg);
     const file = authFile(market, scenario);
+    // REUSE_SESSION=1: si la sesión guardada es reciente, no se repite el login (agilidad); F1 la verifica igual
+    if (process.env.REUSE_SESSION === '1' && freshSession(file)) {
+      console.log(`Sesión de ${scenario} reutilizada (menos de ${REUSE_MAX_MIN} min)`);
+      continue;
+    }
     if (!creds) {
       console.warn(`⚠️  ${scenario}: faltan ${cfg.credentialEnv.userEnv}/${cfg.credentialEnv.passEnv}; ese escenario fallará en F1.`);
       fs.writeFileSync(file, EMPTY);

@@ -24,6 +24,8 @@ import { perform, SPACE } from '../game/GameControls';
 import { GameServerTap } from '../game/GameServerTap';
 import { PragmaticAdapter } from '../providers/PragmaticAdapter';
 import { buildRunReport } from '../report/Report';
+import { live, startScreencast } from '../live/LiveFeed';
+import { expectedFor } from '../contracts/expectedChecks';
 import { BetssonSite } from '../site/BetssonSite';
 import { BetssonWallet } from '../site/BetssonWallet';
 import { completeContract, detectRejection } from '../scenario2/RejectionDetector';
@@ -93,9 +95,11 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
     const t0 = Date.now();
     const push = (status: PhaseStatus['status'], produced: string[], reason?: string) => {
       ctx.phases.push({ phase: id, name, status, startedAt: t0, endedAt: Date.now(), reason, produced });
+      live('phase', { phase: id, name, status, reason });
       ev.log('phase', `${id} ${name}`, status === 'ok' ? 'ok' : `${status}: ${reason}`, undefined, t0);
     };
     if (halted && !opts.always) return push('skipped', [], `no ejecutada: ${halted}`);
+    live('phase', { phase: id, name, status: 'running' });
     try {
       push('ok', await fn());
     } catch (e) {
@@ -104,6 +108,9 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
       if (!opts.always) halted = `${id} falló (${reason})`;
     }
   }
+
+  live('start', { market: cfg.market, scenario: cfg.scenario, mode: cfg.mode, game: cfg.game.name, expected: expectedFor(cfg.scenario) });
+  const stopScreencast = await startScreencast(context, page);
 
   // ---------------------------------------------------------------- F0
   await phase('F0', 'Preparación', async () => {
@@ -118,12 +125,13 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
     wallet.attach(context);
     await site.openCasino();
     ev.log('note', 'cookies', await site.rejectCookies());
-    ctx.session = await site.session();
+    // La señal de sesión es la cartera: responde en cuanto carga la página (sin esperas fijas)
     let first = await wallet.waitForChange(0, T.sessionWalletMs);
     if (!first) {
       await page.reload({ waitUntil: 'domcontentloaded' });
       first = await wallet.waitForChange(0, T.sessionWalletMs);
     }
+    ctx.session = await site.session({ walletSeen: !!first });
     need(first, 'la cartera de Betsson no respondió: sesión no válida');
     need(first!.currency === cfg.currency, `mercado incorrecto: la cartera está en ${first!.currency}, se esperaba ${cfg.currency}`);
     await capturePage('casino', 'Casino con la sesión iniciada');
@@ -195,7 +203,7 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
   // ---------------------------------------------------------------- F4
   await phase('F4', 'Controles', async () => {
     need(ctx.game?.mode === 'real', 'falta game en modo real: F3 falló');
-    const map = loadControlMap(CONTROL_MAPS_DIR, cfg.game.name, VIEWPORT);
+    const map = loadControlMap(CONTROL_MAPS_DIR, `${cfg.market}-${cfg.game.name}`, VIEWPORT);
     if (!map.controls.spin) ev.log('note', 'controles', 'sin mapa guardado: se probará Espacio y se validará con ROUND_STARTED en F6');
     if ((!map.rois.bet || (s1 && !map.rois.rid)) && ocr.ready) {
       const found = await locateRois(ocr, await ctx.game!.element.screenshot(), cfg);
@@ -398,6 +406,7 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
       recapture: () => ctx.game!.element.screenshot().catch(() => null),
     });
     ctx.visual = readings;
+    for (const r of readings) live('reading', { run: `${cfg.market}-${cfg.scenario}`, field: r.field, raw: r.raw, value: r.value, confidence: r.confidence, cropPath: r.cropPath, reason: r.reason, language: r.language });
     for (const r of readings) ev.log('screen', `lectura ${r.field}`, `«${r.raw}» → ${r.value ?? '—'} (confianza ${r.confidence.toFixed(2)})${r.reason ? ' · ' + r.reason : ''}`, r);
     if (ctx.controls && (locatedRois.bet || locatedRois.rid)) {
       ctx.controls.rois = { ...ctx.controls.rois, ...locatedRois };
@@ -445,6 +454,7 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
   await phase('F11', 'Validación', async () => {
     const checks = evaluateChecks({ cfg, scenario: cfg.scenario, round: ctx.round ?? null, initial: ctx.initial, trace: ctx.trace, visual: ctx.visual ?? [], evidence: shots });
     ctx.checks = completeChecks(checks, cfg, cfg.scenario, halted ?? 'el check no se generó');
+    live('checks', { checks: ctx.checks });
     return ['checks'];
   }, { always: true });
 
@@ -460,6 +470,7 @@ export async function runScenario(args: { page: Page; context: BrowserContext; c
     ev.log('note', 'privacidad', `${b.path}: ${b.reason}`);
   }
   if (privacy.checked) ev.log('note', 'privacidad', `${privacy.checked} captura(s) revisadas con OCR, ${privacy.blurred.length} difuminada(s)`);
+  await stopScreencast();
   await ocr.terminate();
 
   await phase('F12', 'Evidencia e informe', async () => {

@@ -9,6 +9,7 @@ import { authFile, loadRunConfig, marketFromEnv, readCredentials, runMode } from
 import { runScenario } from '../src/scenarios/runScenario';
 import { simulateScenario } from '../src/scenarios/simulateScenario';
 import { writeRunReport } from '../src/report/Report';
+import { live } from '../src/live/LiveFeed';
 
 export function scenarioTest(scenario: Scenario) {
   const market = marketFromEnv();
@@ -25,6 +26,7 @@ export function scenarioTest(scenario: Scenario) {
     );
     const report = mode === 'real' ? await runScenario({ page, context, cfg, testInfo }) : await simulateScenario({ page, cfg });
     const { dir, secrets, contractErrors } = writeRunReport(report, cfg);
+    live('done', { run: `${market}-${scenario}`, ok: report.checks.every((c) => c.result === 'PASS'), checks: report.checks.length, passed: report.checks.filter((c) => c.result === 'PASS').length });
     await testInfo.attach('report.html', { path: `${dir}/report.html`, contentType: 'text/html' });
     await testInfo.attach('report.json', { path: `${dir}/report.json`, contentType: 'application/json' });
 

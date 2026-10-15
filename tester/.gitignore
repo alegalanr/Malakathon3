@@ -10,3 +10,6 @@ playwright-report/
 /site/
 /downloaded/
 /.cache/
+
+# Mapas aprendidos sobre la maqueta local (no valen para betsson.es)
+control-maps/mock-*

@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Locator, Page } from '@playwright/test';
+import { live } from '../live/LiveFeed';
 import { redact, redactText } from './redact';
 
 export interface TimelineEntry {
@@ -30,6 +31,7 @@ export class Evidence {
 
   log(source: TimelineEntry['source'], type: string, summary: string, data?: unknown, t = Date.now()) {
     this.timeline.push({ t, source, type, summary, data });
+    if (source !== 'raw' && source !== 'phase') live('log', { source, kind: type, summary, at: t });
     // La consola acaba en los logs de CI: se censura igual que el timeline
     if (source !== 'raw') console.log(redactText(`  ${source.padEnd(7)} ${type}${summary ? ' · ' + summary : ''}`));
   }

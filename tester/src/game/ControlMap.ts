@@ -14,7 +14,7 @@ export function loadControlMap(dir: string, game: string, viewport: { width: num
   const file = controlMapFile(dir, game);
   if (fs.existsSync(file)) {
     const parsed = ControlMap.safeParse(JSON.parse(fs.readFileSync(file, 'utf8')));
-    if (parsed.success) return parsed.data;
+    if (parsed.success) return { ...parsed.data, game }; // la clave manda (p. ej. mercado + juego), no el nombre guardado
   }
   return { game, viewport, controls: {}, rois: {} };
 }
