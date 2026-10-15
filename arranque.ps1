@@ -6,10 +6,12 @@
     powershell -ExecutionPolicy Bypass -File .\arranque.ps1            # instalar + tests + modo simulado
     powershell -ExecutionPolicy Bypass -File .\arranque.ps1 -Mixed     # además, la demo con fallos provocados
     powershell -ExecutionPolicy Bypass -File .\arranque.ps1 -Real      # además, el escenario 1 contra betsson.es (dinero real)
+    powershell -ExecutionPolicy Bypass -File .\arranque.ps1 -Landing   # además, deja abierta la landing / centro de control en http://localhost:8095
 #>
 param(
   [switch]$Mixed,
-  [switch]$Real
+  [switch]$Real,
+  [switch]$Landing
 )
 
 # 'Continue': en Windows PowerShell 5.1, con 'Stop' cualquier aviso de docker por stderr cortaría el script.
@@ -88,6 +90,17 @@ if ($Real) {
   if ((Read-Host 'Escribe SI para continuar') -ne 'SI') { Stop-WithError 'Cancelado.' }
   Invoke-Tester -TesterArgs @('npx', 'playwright', 'test', 'tests/completed-spin.spec.ts', '--project=es') -AllowFail | Out-Null
   Write-Host 'Revisa a mano las capturas de tester/reports/es-completed-spin/evidence/ antes de compartir nada.' -ForegroundColor Yellow
+}
+
+if ($Landing) {
+  Write-Step 'Centro de control (landing): validación en directo contra la maqueta local'
+  & docker @Compose up -d control | Out-Host
+  if ($LASTEXITCODE -ne 0) { Stop-WithError 'No se pudo arrancar el centro de control (¿puertos 8090, 8091 u 8095 ocupados?)' }
+  for ($i = 0; $i -lt 30; $i++) {
+    try { Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:8095/' -TimeoutSec 2 | Out-Null; break } catch { Start-Sleep -Seconds 1 }
+  }
+  Write-Host 'Abierto en http://localhost:8095  (para pararlo: docker compose -f tester/compose.yaml stop control mock)'
+  Start-Process 'http://localhost:8095'
 }
 
 Write-Host "`n✔ Listo." -ForegroundColor Green

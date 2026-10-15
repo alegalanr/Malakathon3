@@ -87,6 +87,13 @@ Qué funciona y quién está con cada parte. Cada agente actualiza **solo su sec
   - Modo simulado: `pass` 14/14 y `mixed` con FAIL solo en `S1-RID-VISIBLE` y `S2-MSG-LANG-VISIBLE`, como antes.
   - Falta la ejecución real con la cuenta sin saldo para confirmar el contrato del rechazo.
 
+## Centro de control (landing de la integración)
+
+- **Estado:** 🟡
+- **Quién:** Alejandro
+- **Cómo:** `tester/control/` (panel en directo en :8095, sin el modo UI de Playwright) sobre la maqueta `tester/mock/` en modo real; canal en directo `tester/src/live/LiveFeed.ts`; agilidad en F1 y login reutilizado. Detalle en [tester/README.md](tester/README.md#centro-de-control-landing-de-la-integración).
+- **Evidencia:** desde el panel, escenario 1 8/8 y escenario 2 6/6; cada fallo provocado lo caza su check (`S1-BETSSON-BALANCE`, `S1-CURRENCY`, `S2-MSG-LANG-VISIBLE`); ronda de 26,1 s a 11,2 s; 61 tests unitarios en verde.
+
 ## Tester contra betsson.es real (login manual, sesión DGOJ, carga del juego)
 
 - **Estado:** 🟡

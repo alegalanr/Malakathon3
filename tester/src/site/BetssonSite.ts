@@ -41,6 +41,9 @@ export class BetssonSite {
 
   /** ✔ OneTrust: «Configuración de cookies» → «Rechazarlas todas». Nunca se aceptan las no esenciales. */
   async rejectCookies(): Promise<string> {
+    // Consentimiento ya guardado en la sesión (cookie estándar de OneTrust): no se espera a un banner que no saldrá
+    const cookies = await this.page.context().cookies().catch(() => []);
+    if (cookies.some((c) => c.name === 'OptanonAlertBoxClosed')) return 'consentimiento ya guardado (sin banner)';
     const settings = this.page.locator('#onetrust-pc-btn-handler');
     if (!(await visible(settings, 8000))) return 'sin banner de cookies';
     await settings.click();
@@ -83,18 +86,28 @@ export class BetssonSite {
     throw new LoginError('tras enviar el formulario sigue visible «Iniciar sesión» (¿credenciales, verificación adicional o CAPTCHA?)');
   }
 
+  /** Se resuelve cuando aparece «Iniciar sesión»; si no aparece en `timeout`, no se resuelve nunca (para usar en carreras). */
+  loginButtonShown(timeout: number): Promise<'logged-out'> {
+    return loginButton(this.page)
+      .first()
+      .waitFor({ state: 'visible', timeout })
+      .then(() => 'logged-out' as const, () => new Promise<never>(() => {}));
+  }
+
   async isLoggedIn(): Promise<boolean> {
     await this.page.waitForTimeout(1500);
     return !(await visible(loginButton(this.page), 4000));
   }
 
   /** F1: sesión iniciada en el dominio del mercado (C2). */
-  async session(): Promise<SessionState> {
+  async session(opts: { walletSeen?: boolean } = {}): Promise<SessionState> {
     const finalUrl = this.page.url();
     const host = new URL(finalUrl).hostname.replace(/^www\./, '');
     const expected = new URL(this.cfg.baseUrl).hostname.replace(/^www\./, '');
     if (host !== expected) throw new MarketMismatchError(`mercado incorrecto: ${host} (se esperaba ${expected})`);
-    if (!(await this.isLoggedIn())) throw new LoginError('sesión no iniciada: sigue visible «Iniciar sesión»');
+    // Si la cartera ya respondió, la sesión está iniciada y el encabezado ya está pintado: comprobación inmediata
+    const loggedIn = opts.walletSeen ? !(await loginButton(this.page).first().isVisible().catch(() => false)) : await this.isLoggedIn();
+    if (!loggedIn) throw new LoginError('sesión no iniciada: sigue visible «Iniciar sesión»');
     return { loggedIn: true, finalUrl, market: this.cfg.market, at: Date.now() };
   }
 

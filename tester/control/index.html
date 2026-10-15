@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Game Validation · Betsson × Pragmatic Play</title>
+<style>
+:root{
+  --bg:#080b12;--bg2:#0c111b;--card:#111827;--card2:#151d2e;--line:#1f2a3d;--line2:#2a374f;
+  --fg:#eef2fb;--muted:#8c98b3;--dim:#5d6a85;
+  --accent:#ff6b2c;--accent2:#ff3d71;--blue:#5aa9ff;--violet:#a98bff;--ok:#34d399;--ko:#f87171;--warn:#fbbf24;
+  --r:14px;--shadow:0 1px 0 rgba(255,255,255,.03) inset,0 12px 32px rgba(0,0,0,.35)
+}
+*{box-sizing:border-box}[hidden]{display:none!important}
+html,body{margin:0}
+body{background:radial-gradient(1100px 560px at 0% -10%,#13213f 0%,transparent 60%),radial-gradient(800px 480px at 100% 0%,#2b1409 0%,transparent 55%),var(--bg);color:var(--fg);font:14.5px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
+a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#c7d2ea}
+.wrap{max-width:1360px;margin:0 auto;padding:0 24px}
+
+/* Cabecera y pestañas */
+header{position:sticky;top:0;z-index:30;background:rgba(8,11,18,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header .wrap{display:flex;align-items:center;gap:22px;height:60px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.2px;white-space:nowrap}
+.logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;font-size:14px;color:#fff;box-shadow:0 6px 18px rgba(255,90,60,.35)}
+.brand small{display:block;font-weight:500;color:var(--muted);font-size:11.5px;letter-spacing:0}
+.tabs{display:flex;gap:4px;height:100%;overflow-x:auto;scrollbar-width:none}
+.tab{background:none;border:0;color:var(--muted);font:inherit;font-weight:600;padding:0 14px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.tab:hover{color:var(--fg)}.tab.on{color:var(--fg);border-bottom-color:var(--accent)}
+.spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border-radius:999px;border:1px solid var(--line2);background:var(--bg2);font-size:12.5px;font-weight:700;white-space:nowrap}
+.pill::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--dim)}
+.pill.running{color:var(--blue);border-color:rgba(90,169,255,.5)}.pill.running::before{background:var(--blue);animation:blink 1s infinite}
+.pill.pass{color:var(--ok);border-color:rgba(52,211,153,.45)}.pill.pass::before{background:var(--ok)}
+.pill.fail{color:var(--ko);border-color:rgba(248,113,113,.45)}.pill.fail::before{background:var(--ko)}
+@keyframes blink{50%{opacity:.25}}
+
+main{padding:22px 0 60px}
+.view{display:none;animation:fade .25s}.view.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}}
+
+/* Piezas comunes */
+.card{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:18px;min-width:0}
+.card>h3,.h3{margin:0 0 12px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.3px;display:flex;align-items:center;gap:8px}
+.muted{color:var(--muted)}.small{font-size:12.5px}
+.btn{font:inherit;font-weight:600;cursor:pointer;border-radius:10px;border:1px solid var(--line2);background:var(--bg2);color:var(--fg);padding:8px 13px;transition:.15s}
+.btn:hover{border-color:var(--blue)}.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{border:0;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:800;box-shadow:0 8px 22px rgba(255,80,60,.3)}
+.btn.big{width:100%;padding:13px 16px;font-size:16px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg .btn{padding:7px 11px;font-size:13.5px}.seg .btn.on{background:rgba(90,169,255,.14);border-color:var(--blue);color:#d7e9ff}
+.seg.fault .btn.on{background:rgba(248,113,113,.14);border-color:var(--ko);color:#ffd9d9}
+.seg.vertical{flex-direction:column}.seg.vertical .btn{text-align:left}
+.field{margin-bottom:16px}.field>label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.1px;margin-bottom:7px}
+input[type=text]{width:100%;font:inherit;color:var(--fg);background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:9px 11px;outline:none}
+input[type=text]:focus{border-color:var(--blue)}
+.row{display:flex;gap:8px;align-items:center}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:3px 9px;border-radius:999px;background:var(--bg2);border:1px solid var(--line2);color:#cfd8ec;cursor:pointer}
+.chip:hover{border-color:var(--blue)}.chip b{font-weight:600}.chip .x{color:var(--muted)}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:6px;border:1px solid var(--line2);color:var(--muted);text-transform:none;letter-spacing:0}
+.tag.e{color:var(--violet);border-color:rgba(169,139,255,.4)}.tag.n{color:var(--blue);border-color:rgba(90,169,255,.4)}.tag.w{color:var(--ok);border-color:rgba(52,211,153,.4)}.tag.s{color:var(--warn);border-color:rgba(251,191,36,.4)}
+.res{display:inline-flex;align-items:center;gap:5px;font-weight:800;font-size:12.5px;padding:2px 9px;border-radius:999px}
+.res.ok{background:rgba(52,211,153,.13);color:var(--ok)}.res.ko{background:rgba(248,113,113,.14);color:var(--ko)}.res.skip{background:rgba(140,152,179,.14);color:var(--muted)}
+.warnbox{border:1px solid rgba(251,191,36,.45);background:rgba(251,191,36,.08);color:#fde7b0;border-radius:10px;padding:10px 12px;font-size:13px;margin-top:10px}
+.note{border-left:3px solid var(--line2);padding:2px 0 2px 10px;color:var(--muted);font-size:13px}
+
+/* Cabecera de la demo */
+.intro{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end;margin-bottom:20px}
+.intro h1{margin:0;font-size:30px;line-height:1.15;letter-spacing:-.4px}
+.intro h1 span{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.intro p{margin:6px 0 0;color:var(--muted);max-width:760px}
+.kchips{display:flex;gap:10px;flex-wrap:wrap}
+.kchip{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 14px;min-width:120px}
+.kchip b{display:block;font-size:20px;letter-spacing:-.3px}.kchip span{font-size:11.5px;color:var(--muted)}
+
+/* Demo */
+.demo{display:grid;grid-template-columns:330px minmax(0,1fr);gap:18px;align-items:start}
+.side{position:sticky;top:78px}
+.stage{display:flex;flex-direction:column;gap:16px}
+.banner{display:flex;align-items:center;gap:14px;border-radius:var(--r);padding:14px 18px;font-weight:800;font-size:17px}
+.banner.ok{background:linear-gradient(135deg,rgba(16,122,74,.9),rgba(34,170,104,.9))}.banner.ko{background:linear-gradient(135deg,rgba(150,24,40,.92),rgba(220,60,80,.92))}.banner.info{background:var(--card2);border:1px solid var(--line2);font-weight:600;font-size:14px}
+.banner .sp{flex:1}.banner .btn{background:rgba(0,0,0,.18);border-color:rgba(255,255,255,.45);color:#fff;font-size:13px}
+.screen{position:relative;aspect-ratio:1100/640;background:#05070c;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+.screen img{width:100%;height:100%;object-fit:contain;display:block}
+.screen .idle{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:30px;color:var(--muted)}
+.screen .idle b{color:var(--fg)}
+.ov{position:absolute;top:12px;background:rgba(5,7,12,.72);border:1px solid var(--line2);padding:4px 11px;border-radius:999px;font-size:12px;font-weight:600;backdrop-filter:blur(4px)}
+.ov.l{left:12px}.ov.r{right:12px;font-variant-numeric:tabular-nums}
+.ov.live::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ko);margin-right:7px;animation:blink 1s infinite}
+.steps{display:grid;grid-template-columns:repeat(13,minmax(0,1fr));gap:4px;margin-top:12px}
+.st{text-align:center;padding:6px 2px;border-radius:9px;border:1px solid transparent;transition:.25s;min-width:0}
+.st i{display:block;width:10px;height:10px;border-radius:50%;margin:0 auto 4px;background:var(--line2)}
+.st b{display:block;font-size:11.5px}.st small{display:block;font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st em{display:block;font-style:normal;font-size:10.5px;color:var(--fg);opacity:.8;min-height:15px;font-variant-numeric:tabular-nums}
+.st.running{border-color:rgba(90,169,255,.5);background:rgba(90,169,255,.08)}.st.running i{background:var(--blue);animation:blink .8s infinite}
+.st.ok i{background:var(--ok)}.st.failed{background:rgba(248,113,113,.1)}.st.failed i{background:var(--ko)}.st.skipped{opacity:.35}
+.two{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px}
+.cks{display:flex;flex-direction:column;gap:7px}
+.ck{display:grid;grid-template-columns:22px 1fr;gap:9px;padding:9px 11px;border-radius:10px;background:var(--bg2);border:1px solid var(--line);transition:.3s}
+.ck .ic{font-size:15px;line-height:1.35}.ck .t{font-weight:700;font-size:13.5px}.ck .d{color:var(--muted);font-size:12px;margin-top:1px;word-break:break-word}
+.ck.ok{border-color:rgba(52,211,153,.45)}.ck.ko{border-color:rgba(248,113,113,.55);background:rgba(248,113,113,.06);animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+.grp{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:10px 0 2px}.grp:first-child{margin-top:0}
+.reads{display:flex;flex-direction:column;gap:8px}
+.rd{display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:center;padding:8px;border-radius:10px;background:var(--bg2);border:1px solid var(--line)}
+.rd img{width:150px;max-height:58px;object-fit:contain;background:#fff;border-radius:5px}
+.rd b{font-size:13px}.rd span{display:block;font-size:12px;color:var(--muted)}
+details.lanes summary{cursor:pointer;color:var(--muted);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:1.3px;list-style:none}
+details.lanes summary::before{content:'▸ ';}details.lanes[open] summary::before{content:'▾ '}
+.lanegrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}
+.lane ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;max-height:230px;overflow:auto}
+.lane li{font-size:12px;padding:6px 8px;border-radius:7px;background:var(--bg2);border-left:3px solid var(--line2);animation:fade .3s}
+.lane li b{display:block;font-size:12.5px}.lane li span{color:var(--muted);word-break:break-word}
+.lane.e li{border-left-color:var(--violet)}.lane.n li{border-left-color:var(--blue)}.lane.w li{border-left-color:var(--ok)}
+.queue{display:flex;flex-direction:column;gap:5px;margin-top:10px;font-size:13px}
+.queue div{display:flex;gap:8px;align-items:center;padding:6px 9px;border-radius:8px;background:var(--bg2);border:1px solid var(--line)}
+.queue div.now{border-color:var(--blue)}.queue div .r{margin-left:auto}
+
+/* Informes */
+.reports{display:grid;grid-template-columns:320px minmax(0,1fr);gap:18px;align-items:start}
+.rlist{display:flex;flex-direction:column;gap:6px;max-height:calc(100vh - 160px);overflow:auto;position:sticky;top:78px}
+.ritem{text-align:left;font:inherit;color:var(--fg);cursor:pointer;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;display:grid;grid-template-columns:1fr auto;gap:2px 8px}
+.ritem:hover{border-color:var(--line2)}.ritem.on{border-color:var(--blue);background:rgba(90,169,255,.08)}
+.ritem b{font-size:13.5px}.ritem span{font-size:12px;color:var(--muted)}
+.rhead{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;margin-bottom:16px}
+.rhead h2{margin:0;font-size:22px;letter-spacing:-.3px;overflow-wrap:anywhere}
+.verdict{font-size:15px;font-weight:800;padding:5px 14px;border-radius:999px}
+.verdict.ok{background:rgba(52,211,153,.15);color:var(--ok)}.verdict.ko{background:rgba(248,113,113,.15);color:var(--ko)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:1px;font-weight:700}
+tr.why td{border-bottom:1px solid var(--line2);padding-top:0;color:var(--muted);font-size:12.5px}
+.scroll{overflow-x:auto}
+td.agree{color:var(--ok)}td.dis{color:var(--ko);font-weight:700}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.gallery figure{margin:0;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:8px}
+.gallery img{width:100%;border-radius:6px;display:block}.gallery figcaption{font-size:12px;color:var(--muted);margin-top:6px}
+.tl{display:flex;flex-direction:column;gap:6px}
+.tl div{display:grid;grid-template-columns:42px 1fr 80px;gap:10px;align-items:center;font-size:13px}
+.tl .bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}.tl .bar i{display:block;height:100%;background:var(--blue)}
+.tl .f i{background:var(--ko)}.tl .s{opacity:.4}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+
+/* Métricas */
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.kpi b{display:block;font-size:28px;font-weight:800;letter-spacing:-.5px}.kpi span{font-size:12.5px;color:var(--muted)}
+.kpi.ok b{color:var(--ok)}.kpi.blue b{color:var(--blue)}.kpi.accent b{color:var(--accent)}
+.hbars{display:flex;flex-direction:column;gap:8px}
+.hbars div{display:grid;grid-template-columns:140px 1fr 64px;gap:10px;align-items:center;font-size:13px}
+.hbars .track{height:10px;border-radius:5px;background:var(--bg2);overflow:hidden}.hbars .track i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,var(--blue),var(--violet))}
+.vbars{display:flex;align-items:flex-end;gap:5px;height:170px;padding-top:10px}
+.vbars div{flex:1;min-width:6px;border-radius:5px 5px 0 0;background:var(--ok);position:relative}.vbars div.ko{background:var(--ko)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+
+/* Tests */
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.tsum{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:4px 0 14px}
+.tsum b{font-size:24px}.tlist{display:flex;flex-direction:column;gap:4px;max-height:520px;overflow:auto}
+.tfile{font-size:12px;color:var(--muted);margin:10px 0 2px;font-family:ui-monospace,monospace}
+.titem{display:grid;grid-template-columns:20px 1fr auto;gap:8px;font-size:13px;padding:5px 8px;border-radius:7px;background:var(--bg2)}
+.titem .ms{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}.titem .err{grid-column:2/-1;color:var(--ko);font-size:12px}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line2);border-top-color:var(--blue);border-radius:50%;animation:rot .8s linear infinite;vertical-align:-2px}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* Cómo funciona */
+.sources{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.src{border-top:3px solid var(--line2)}.src .ic{font-size:24px}.src b{display:block;font-size:16px;margin:8px 0 4px}.src p{margin:0;color:var(--muted);font-size:13.5px}
+.src.e{border-top-color:var(--violet)}.src.n{border-top-color:var(--blue)}.src.w{border-top-color:var(--ok)}.src.s{border-top-color:var(--warn)}
+.phaselist{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 22px;font-size:13.5px}
+.phaselist div{display:grid;grid-template-columns:42px 1fr;gap:8px}.phaselist b{color:var(--accent)}
+ul.clean{margin:0;padding-left:18px;color:#cdd6ea}ul.clean li{margin:5px 0}
+
+@media (max-width:1150px){.demo,.reports{grid-template-columns:minmax(0,1fr)}.side,.rlist{position:static}.rlist{max-height:300px}.kpis{grid-template-columns:repeat(3,1fr)}.sources{grid-template-columns:1fr 1fr}.two,.grid2,.tgrid{grid-template-columns:minmax(0,1fr)}.lanegrid{grid-template-columns:1fr}.intro{grid-template-columns:1fr}}
+@media (max-width:700px){.wrap{padding:0 16px}.brand small{display:none}.steps{grid-template-columns:repeat(7,minmax(0,1fr))}.kpis{grid-template-columns:1fr 1fr}.sources,.phaselist{grid-template-columns:1fr}.intro h1{font-size:24px}.rd{grid-template-columns:1fr}.hbars div{grid-template-columns:96px 1fr 54px}header .pill{display:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand"><div class="logo">◆</div><div>Game Validation<small>Betsson × Pragmatic Play</small></div></div>
+    <nav class="tabs" id="tabs">
+      <button class="tab on" data-view="demo">Demo en directo</button>
+      <button class="tab" data-view="reports">Informes</button>
+      <button class="tab" data-view="metrics">Métricas</button>
+      <button class="tab" data-view="tests">Tests</button>
+      <button class="tab" data-view="how">Cómo funciona</button>
+    </nav>
+    <div class="spacer"></div>
+    <span class="pill" id="status">Listo</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- ======================================================= DEMO -->
+  <section class="view on" id="v-demo">
+    <div class="intro">
+      <div>
+        <h1>Validamos juegos de terceros <span>como un jugador</span></h1>
+        <p>Sin acceso al DOM del juego: el validador gira de verdad y cruza cuatro fuentes —eventos del juego, red del proveedor, cartera de Betsson y la pantalla— hasta que todas cuentan la misma historia.</p>
+      </div>
+      <div class="kchips">
+        <div class="kchip"><b id="k-last">—</b><span>última ronda</span></div>
+        <div class="kchip"><b id="k-rate">—</b><span>éxito sin fallos provocados</span></div>
+        <div class="kchip"><b id="k-caught">—</b><span>fallos provocados cazados</span></div>
+      </div>
+    </div>
+
+    <div class="demo">
+      <aside class="card side">
+        <h3>Configurar ejecución</h3>
+        <div class="field"><label>Destino</label>
+          <div class="seg" id="target"><button class="btn on" data-v="mock">Maqueta local</button><button class="btn" data-v="real">betsson.es (real)</button></div>
+          <div class="warnbox" id="realwarn" hidden>Usa la cuenta de prueba de <code>tester/.env</code> y hace una tirada con su saldo. Hoy el anti-bot de Betsson bloquea el login automático: si pasa, la ejecución se para en F1 con el motivo.<div class="row" style="margin-top:8px"><input type="text" id="confirm" placeholder="Escribe SI para confirmar" autocomplete="off"></div></div>
+        </div>
+        <div class="field"><label>Juego</label>
+          <div class="row"><input type="text" id="game" list="gamelist" value="Bubble Up" autocomplete="off"><button class="btn" id="add" title="Añadir al lote">＋</button></div>
+          <datalist id="gamelist"></datalist>
+          <div class="chips" id="suggest"></div>
+          <div id="batchbox" hidden><div class="small muted" style="margin-top:10px">Lote (se validan en orden):</div><div class="chips" id="batch"></div></div>
+        </div>
+        <div class="field"><label>Escenario</label>
+          <div class="seg" id="scenario"><button class="btn on" data-v="completed-spin">Tirada completada</button><button class="btn" data-v="insufficient-balance">Saldo insuficiente</button><button class="btn" data-v="all">Los dos</button></div>
+        </div>
+        <div class="field" id="faultbox"><label>Fallo provocado en la maqueta</label>
+          <div class="seg fault vertical" id="bug">
+            <button class="btn on" data-v="none">Ninguno</button>
+            <button class="btn" data-v="no-credit">💸 El wallet no abona el premio</button>
+            <button class="btn" data-v="currency">💱 Moneda equivocada</button>
+            <button class="btn" data-v="lang">🌐 Aviso en inglés</button>
+          </div>
+        </div>
+        <div class="field" id="winbox"><label>Premio</label>
+          <div class="seg" id="win"><button class="btn on" data-v="random">Aleatorio</button><button class="btn" data-v="always">Siempre</button><button class="btn" data-v="never">Nunca</button></div>
+        </div>
+        <button class="btn primary big" id="go">▶ Lanzar validación</button>
+        <div class="queue" id="queue"></div>
+      </aside>
+
+      <div class="stage">
+        <div id="banner" hidden></div>
+        <div class="card">
+          <div class="screen" id="screen">
+            <div class="idle" id="idle"><div><b>Elige un juego y pulsa ▶ Lanzar validación</b><br>Verás el navegador del validador entrando en Betsson, abriendo el juego en Real Play y girando como un jugador.</div></div>
+            <span class="ov l" id="badge" hidden></span><span class="ov r" id="timer" hidden>0,0 s</span>
+          </div>
+          <div class="steps" id="steps"></div>
+          <div class="note" id="notes" style="margin-top:10px">Esperando una ejecución.</div>
+        </div>
+        <div class="two">
+          <div class="card"><h3>✅ Checks del reto</h3><div class="cks" id="checks"><div class="muted small">Aparecerán al lanzar.</div></div></div>
+          <div class="card"><h3>👁️ Lo que vio el validador <span class="tag s">OCR</span></h3><div class="reads" id="reads"><div class="muted small">Recortes que lee el OCR: el #rid, la apuesta y el aviso.</div></div></div>
+        </div>
+        <details class="card lanes" id="lanes">
+          <summary>Fuentes en directo · eventos, red y cartera</summary>
+          <div class="lanegrid">
+            <div class="lane e"><div class="h3"><span class="tag e">Evento</span> del juego</div><ul id="lane-event"></ul></div>
+            <div class="lane n"><div class="h3"><span class="tag n">Red</span> del proveedor</div><ul id="lane-network"></ul></div>
+            <div class="lane w"><div class="h3"><span class="tag w">Cartera</span> Betsson</div><ul id="lane-wallet"></ul></div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================= INFORMES -->
+  <section class="view" id="v-reports">
+    <div class="reports">
+      <div class="rlist" id="rlist"><div class="empty">Sin ejecuciones todavía.</div></div>
+      <div id="rview"><div class="card empty">Elige una ejecución para ver su informe.</div></div>
+    </div>
+  </section>
+
+  <!-- ======================================================= MÉTRICAS -->
+  <section class="view" id="v-metrics">
+    <div class="row" style="justify-content:flex-end;margin-bottom:10px"><button class="btn" id="clear">🧹 Limpiar historial</button></div>
+    <div class="kpis" id="kpis"></div>
+    <div class="grid2">
+      <div class="card"><h3>⏱️ Tiempo medio por fase</h3><div class="hbars" id="phasebars"></div></div>
+      <div class="card"><h3>📈 Duración de las últimas rondas</h3><div class="vbars" id="vbars"></div><div class="small muted" style="margin-top:8px">Verde: PASS · rojo: FAIL (incluye los fallos provocados a propósito).</div></div>
+    </div>
+    <div class="card scroll"><h3>🎰 Por juego</h3><table><thead><tr><th>Juego</th><th>Rondas</th><th>PASS</th><th>Ronda media</th><th>Más rápida</th><th>Último resultado</th></tr></thead><tbody id="pergame"></tbody></table></div>
+  </section>
+
+  <!-- ======================================================= TESTS -->
+  <section class="view" id="v-tests">
+    <div class="tgrid">
+      <div class="card" id="t-unit"></div>
+      <div class="card" id="t-simulated"></div>
+    </div>
+  </section>
+
+  <!-- ======================================================= CÓMO FUNCIONA -->
+  <section class="view" id="v-how">
+    <div class="sources">
+      <div class="card src e"><div class="ic">📡</div><b>Eventos del juego</b><p>Lo que Pragmatic le cuenta a Betsson por <code>postMessage</code>: empieza la ronda, termina, apuesta, premio y saldo.</p></div>
+      <div class="card src n"><div class="ic">🌐</div><b>Red del proveedor</b><p><code>doSpin</code> y <code>doCollect</code>: el resultado que decidió el servidor y su id de ronda.</p></div>
+      <div class="card src w"><div class="ic">💶</div><b>Cartera de Betsson</b><p>Saldo oficial antes y después: <em>después = antes − apuesta + premio</em>.</p></div>
+      <div class="card src s"><div class="ic">👁️</div><b>Lo que ve el jugador</b><p>OCR dirigido sobre 2-3 recortes: el <code>#rid</code>, la apuesta mostrada y el aviso, en el idioma del mercado.</p></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>Las fases de una ronda</h3><div class="phaselist" id="phaselist"></div></div>
+      <div class="card"><h3>Por qué es rápido y fiable</h3>
+        <ul class="clean">
+          <li><b>Sin interfaz de pruebas de por medio:</b> un proceso por ronda, lanzado desde esta página.</li>
+          <li><b>Sesión reutilizada:</b> el login solo se repite si la sesión tiene más de 30 minutos o deja de valer.</li>
+          <li><b>Sin esperas fijas:</b> cada paso avanza en cuanto llega su señal (evento, red o cartera).</li>
+          <li><b>El OCR es testigo, no juez:</b> lee 2-3 recortes pequeños y nunca es la única fuente de un check.</li>
+          <li><b>Aprende cada juego:</b> dónde pulsar y dónde leer se guarda por mercado y juego, y se revalida en cada uso.</li>
+          <li><b>Sin secretos en las evidencias:</b> login fuera de la traza, censura de tokens y escáner antes de publicar.</li>
+        </ul>
+        <p class="note" style="margin-top:14px">La demo usa una maqueta local de Betsson y Pragmatic Play con el comportamiento verificado en la web real. El validador corre en modo real: el mismo código que contra betsson.es.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+const PHASES = [['F0','Preparación','Configuración validada y OCR cargado'],['F1','Sesión','Sesión en el mercado correcto; la cartera responde'],['F2','Escucha','Eventos, red y cartera escuchando antes de abrir el juego'],['F3','Juego listo','Buscar, abrir en Real Play, sesión DGOJ y READY'],['F4','Controles','Cómo girar y dónde leer (aprendido y revalidado)'],['F5','Estado inicial','Saldo de Betsson, saldo del juego y apuesta'],['F6','Acción','Girar como un jugador y confirmarlo por evento'],['F7','Ronda','Hasta resultShown (o el rechazo en el escenario 2)'],['F8','Testigo visual','OCR del #rid, la apuesta y el aviso'],['F9','Cartera final','Saldo de Betsson posterior a la ronda'],['F10','Ensamblado','Cada dato con su fuente e invariantes'],['F11','Checks','PASS/FAIL con esperado y obtenido'],['F12','Informe','Informe, capturas y cronología sin secretos']];
+const SC = { 'completed-spin': 'Tirada completada', 'insufficient-balance': 'Saldo insuficiente' };
+const BUG = { none: 'Ninguno', 'no-credit': 'El wallet no abona', currency: 'Moneda equivocada', lang: 'Aviso en inglés' };
+const SRC = { event: ['Evento', 'e'], network: ['Red', 'n'], wallet: ['Cartera', 'w'], screen: ['Pantalla', 's'], config: ['Config', ''] };
+const PAGE_T0 = Date.now();
+const S = { target: 'mock', scenario: 'completed-spin', bug: 'none', win: 'random', batch: [], current: null, results: [], phaseT: {}, t0: null, timer: null, runs: [], reportSel: null, tests: {} };
+
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const eur = (c) => (c == null ? '—' : (c / 100).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' €');
+const secs = (ms) => (ms / 1000).toFixed(1).replace('.', ',') + ' s';
+const hhmm = (iso) => new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+const roundMs = (s) => Object.values(s.phases ?? {}).reduce((a, p) => a + (p.ms || 0), 0);
+const api = (u, o) => fetch(u, o).then((r) => r.json());
+
+// ---------------------------------------------------------------- pestañas
+function show(view) {
+  $$('.tab').forEach((t) => t.classList.toggle('on', t.dataset.view === view));
+  $$('.view').forEach((v) => v.classList.toggle('on', v.id === 'v-' + view));
+  history.replaceState(null, '', '#' + view);
+  if (view === 'reports') renderReportList();
+  if (view === 'metrics') renderMetrics();
+  if (view === 'tests') renderTests();
+}
+$$('.tab').forEach((t) => (t.onclick = () => show(t.dataset.view)));
+
+// ---------------------------------------------------------------- configuración
+function seg(id, key, after) {
+  $$(`#${id} .btn`).forEach((b) => (b.onclick = () => { S[key] = b.dataset.v; $$(`#${id} .btn`).forEach((x) => x.classList.toggle('on', x === b)); after?.(); }));
+}
+seg('target', 'target', () => { const real = S.target === 'real'; $('#realwarn').hidden = !real; $('#faultbox').hidden = real; $('#winbox').hidden = real; });
+seg('scenario', 'scenario');
+seg('bug', 'bug', fault);
+seg('win', 'win', fault);
+async function fault() { await fetch(`/fault?bug=${S.bug}&win=${S.win}`, { method: 'POST' }).catch(() => {}); }
+function renderBatch() {
+  $('#batchbox').hidden = !S.batch.length;
+  $('#batch').innerHTML = S.batch.map((g, i) => `<span class="chip"><b>${i + 1}.</b> ${esc(g)} <span class="x" data-i="${i}">✕</span></span>`).join('');
+  $$('#batch .x').forEach((x) => (x.onclick = () => { S.batch.splice(+x.dataset.i, 1); renderBatch(); }));
+}
+$('#add').onclick = () => { const g = $('#game').value.trim(); if (g && !S.batch.includes(g)) S.batch.push(g); $('#game').value = ''; renderBatch(); };
+$('#game').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#add').click(); } });
+api('/api/games').then((gs) => {
+  const pp = gs.filter((g) => g.provider === 'Pragmatic Play');
+  $('#gamelist').innerHTML = gs.map((g) => `<option value="${esc(g.name)}">${esc(g.provider)}</option>`).join('');
+  $('#suggest').innerHTML = pp.slice(0, 6).map((g) => `<span class="chip" data-g="${esc(g.name)}">${esc(g.name)}</span>`).join('');
+  $$('#suggest .chip').forEach((c) => (c.onclick = () => ($('#game').value = c.dataset.g)));
+}).catch(() => {});
+
+$('#go').onclick = async () => {
+  const games = S.batch.length ? S.batch : [$('#game').value.trim() || 'Bubble Up'];
+  const p = new URLSearchParams({ games: games.join(','), scenario: S.scenario, target: S.target });
+  if (S.target === 'real') {
+    if ($('#confirm').value.trim() !== 'SI') { $('#confirm').focus(); return banner('info', 'Para el destino real escribe <b>SI</b> en la confirmación.'); }
+    p.set('confirm', 'SI');
+  } else await fault();
+  const r = await fetch('/run?' + p, { method: 'POST' });
+  if (!r.ok) banner('info', esc((await r.json().catch(() => ({}))).error ?? 'No se pudo lanzar'));
+};
+
+// ---------------------------------------------------------------- demo en directo
+function status(text, cls = '') { const s = $('#status'); s.textContent = text; s.className = 'pill ' + cls; }
+function banner(kind, html) { const b = $('#banner'); b.hidden = false; b.className = 'banner ' + kind; b.innerHTML = html; }
+function steps() { $('#steps').innerHTML = PHASES.map(([p, n]) => `<div class="st" id="st-${p}"><i></i><b>${p}</b><small>${n}</small><em></em></div>`).join(''); S.phaseT = {}; }
+steps();
+function push(lane, title, detail) {
+  const ul = $('#lane-' + lane); if (!ul) return;
+  ul.insertAdjacentHTML('afterbegin', `<li><b>${esc(title)}</b><span>${esc(detail || '')}</span></li>`);
+  while (ul.children.length > 40) ul.lastChild.remove();
+}
+function renderChecks(sc, game, list, final) {
+  const id = `ck-${sc}-${game}`.replace(/[^a-z0-9-]/gi, '_');
+  let box = document.getElementById(id);
+  if (!box) { $('#checks').insertAdjacentHTML('beforeend', `<div class="grp">${esc(game)} · ${SC[sc]}</div><div class="cks" id="${id}"></div>`); box = document.getElementById(id); }
+  box.innerHTML = list.map((c) => {
+    const st = final ? (c.result === 'PASS' ? 'ok' : 'ko') : '';
+    const ic = final ? (c.result === 'PASS' ? '✅' : '❌') : '⏳';
+    const d = final ? `${esc(c.observed)}${c.result === 'FAIL' ? ` · esperado ${esc(c.expected)}` : ''}` : 'pendiente';
+    return `<div class="ck ${st}"><div class="ic">${ic}</div><div><div class="t">${esc(c.title)}</div><div class="d">${d}</div></div></div>`;
+  }).join('');
+}
+function renderQueue(jobs, nowIdx) {
+  $('#queue').innerHTML = jobs.length > 1 ? jobs.map((j, i) => `<div class="${i === nowIdx ? 'now' : ''}">${i < nowIdx ? '✔' : i === nowIdx ? '<span class="spin"></span>' : '·'} ${esc(j.game)} <span class="muted small">${SC[j.scenario]}</span><span class="r small muted" id="q-${i}"></span></div>`).join('') : '';
+}
+let jobs = [], jobIdx = -1;
+
+const es = new EventSource('/events');
+es.onmessage = (e) => {
+  const m = JSON.parse(e.data);
+  const live = m.t === undefined || m.t >= PAGE_T0 - 1500;
+  switch (m.type) {
+    case 'hello': if (m.busy) status(m.busy === 'tests' ? 'Tests en curso' : 'En curso', 'running'); break;
+    case 'run':
+      jobs = m.jobs; jobIdx = -1; S.results = [];
+      $('#checks').innerHTML = ''; $('#reads').innerHTML = ''; ['event', 'network', 'wallet'].forEach((l) => ($('#lane-' + l).innerHTML = ''));
+      $('#banner').hidden = true; status('En curso', 'running'); $('#go').disabled = true;
+      S.t0 = m.t; clearInterval(S.timer); $('#timer').hidden = false;
+      S.timer = setInterval(() => ($('#timer').textContent = secs(Date.now() - S.t0)), 100);
+      renderQueue(jobs, 0); break;
+    case 'job': jobIdx = jobs.findIndex((j, i) => i > jobIdx && j.game === m.game && j.scenario === m.scenario); renderQueue(jobs, jobIdx); break;
+    case 'start':
+      S.current = { scenario: m.scenario, game: m.game }; steps();
+      $('#idle').hidden = true; $('#badge').hidden = false; $('#badge').className = 'ov l live';
+      $('#badge').textContent = `${m.game} · ${SC[m.scenario]} · ${m.market === 'mock' ? 'maqueta' : 'betsson.es'}`;
+      renderChecks(m.scenario, m.game, m.expected, false); break;
+    case 'frame': {
+      let img = $('#screen img');
+      if (!img) { $('#screen').insertAdjacentHTML('afterbegin', '<img alt="pantalla del validador">'); img = $('#screen img'); }
+      img.src = 'data:image/jpeg;base64,' + m.data; break;
+    }
+    case 'phase': {
+      const el = $('#st-' + m.phase); if (!el) break;
+      el.className = 'st ' + m.status;
+      if (m.status === 'running') S.phaseT[m.phase] = m.t;
+      else if (S.phaseT[m.phase]) el.querySelector('em').textContent = secs(m.t - S.phaseT[m.phase]);
+      if (m.status === 'failed') $('#notes').textContent = `✘ ${m.phase} ${m.name}: ${m.reason}`;
+      break;
+    }
+    case 'log':
+      if (m.source === 'event') push('event', m.kind, m.summary);
+      else if (m.source === 'action') push('event', '🖱️ ' + m.kind, m.summary);
+      else if (m.source === 'network') push('network', m.kind, m.summary);
+      else if (m.source === 'wallet') push('wallet', 'Saldo', m.summary.replace(/^(\d+) (\w+)/, (_, a, c) => eur(+a) + ' · ' + c));
+      else if (m.source === 'note') $('#notes').textContent = `${m.kind}: ${m.summary}`;
+      break;
+    case 'reading':
+      if ($('#reads .muted')) $('#reads').innerHTML = '';
+      $('#reads').insertAdjacentHTML('beforeend', `<div class="rd"><img src="/reports/${m.run}/${m.cropPath}?t=${Date.now()}" alt="${esc(m.field)}"><div><b>${{ rid: 'Ronda (#rid)', bet: 'Apuesta mostrada', message: 'Aviso' }[m.field] ?? esc(m.field)}</b><span>leído «${esc(m.raw)}» · confianza ${(+m.confidence).toFixed(2)}${m.language ? ' · idioma ' + m.language : ''}${m.reason ? ' · ' + esc(m.reason) : ''}</span></div></div>`); break;
+    case 'checks': if (S.current) renderChecks(S.current.scenario, S.current.game, m.checks, true); break;
+    case 'done': S.results.push(m); if (jobIdx >= 0 && $('#q-' + jobIdx)) $('#q-' + jobIdx).textContent = `${m.passed}/${m.checks}`; break;
+    case 'notice': $('#notes').textContent = `⚠ ${m.game} · ${SC[m.scenario]}: ${m.text}`; break;
+    case 'fault': break;
+    case 'idle': {
+      clearInterval(S.timer); $('#go').disabled = false; renderQueue(jobs, jobs.length);
+      $('#badge').className = 'ov l'; if (!$('#badge').hidden) $('#badge').textContent += ' · fin';
+      loadRuns();
+      if (!live) { status('Listo'); $('#timer').hidden = true; break; }
+      const rec = m.summary; const ok = rec.pass;
+      status(ok ? 'PASS' : 'FAIL', ok ? 'pass' : 'fail');
+      const scs = rec.scenarios;
+      const detail = scs.map((s) => `${esc(s.game)}: ${s.passed}/${s.checks}`).join(' · ') + (rec.notices.length ? ` · ${rec.notices.length} sin ejecutar` : '');
+      banner(ok ? 'ok' : 'ko', `${ok ? '✅ PASS' : '❌ FAIL'} <span class="small" style="font-weight:600">${detail} · ${secs(rec.durationMs)}</span><span class="sp"></span>${scs.length ? `<button class="btn" id="seeRep">Ver informe</button>` : ''}`);
+      $('#seeRep')?.addEventListener('click', () => { S.reportSel = `${rec.id}:${scs.length - 1}`; show('reports'); });
+      break;
+    }
+    case 'tests-start': S.tests.running = m.suite; status('Tests en curso', 'running'); renderTests(); break;
+    case 'tests-done': S.tests.running = null; S.tests[m.result.suite] = m.result; status(m.result.failed ? 'Tests con fallos' : 'Tests OK', m.result.failed ? 'fail' : 'pass'); renderTests(); break;
+  }
+};
+es.onerror = () => status('Sin conexión', 'fail');
+
+// ---------------------------------------------------------------- datos de ejecuciones
+async function loadRuns() {
+  S.runs = await api('/api/runs').catch(() => []);
+  const rounds = S.runs.flatMap((r) => r.scenarios.map((s) => ({ ...s, mode: r.mode, target: r.target, at: r.at })));
+  const last = rounds[0];
+  $('#k-last').textContent = last ? secs(roundMs(last)) : '—';
+  const clean = rounds.filter((s) => !s.mode || s.mode.bug === 'none');
+  $('#k-rate').textContent = clean.length ? Math.round((100 * clean.filter((s) => s.pass).length) / clean.length) + ' %' : '—';
+  const provoked = rounds.filter((s) => s.mode && s.mode.bug !== 'none');
+  $('#k-caught').textContent = provoked.length ? `${provoked.filter((s) => s.pass === false).length}/${provoked.length}` : '—';
+  if ($('#v-reports').classList.contains('on')) renderReportList();
+  if ($('#v-metrics').classList.contains('on')) renderMetrics();
+}
+
+// ---------------------------------------------------------------- informes
+function renderReportList() {
+  const items = S.runs.flatMap((r) => r.scenarios.map((s, i) => ({ key: `${r.id}:${i}`, r, s })));
+  if (!items.length) { $('#rlist').innerHTML = '<div class="empty">Sin ejecuciones todavía.</div>'; return; }
+  if (!S.reportSel || !items.find((x) => x.key === S.reportSel)) S.reportSel = items[0].key;
+  $('#rlist').innerHTML = items.map(({ key, r, s }) => `<button class="ritem ${key === S.reportSel ? 'on' : ''}" data-k="${key}"><b>${esc(s.game ?? '—')}</b><span class="res ${s.pass ? 'ok' : 'ko'}">${s.passed ?? 0}/${s.checks ?? 0}</span><span>${SC[s.scenario] ?? s.scenario} · ${r.target === 'real' ? 'betsson.es' : 'maqueta'}${r.mode && r.mode.bug !== 'none' ? ' · fallo: ' + BUG[r.mode.bug] : ''}</span><span>${hhmm(r.at)} · ${secs(roundMs(s))}</span></button>`).join('');
+  $$('.ritem').forEach((b) => (b.onclick = () => { S.reportSel = b.dataset.k; renderReportList(); }));
+  const sel = items.find((x) => x.key === S.reportSel);
+  renderReport(sel.r, sel.s);
+}
+async function renderReport(r, s) {
+  const base = '/reports/' + (s.report ?? s.run);
+  const rep = await api(base + '/report.json').catch(() => null);
+  if (!rep) { $('#rview').innerHTML = '<div class="card empty">El informe de esta ejecución ya no está en disco.</div>'; return; }
+  const pass = rep.checks.filter((c) => c.result === 'PASS').length;
+  const ok = pass === rep.checks.length;
+  const rd = rep.round;
+  const SOURCES = ['event', 'network', 'wallet', 'screen'];
+  const multi = rd ? [['Apuesta', rd.bet, 1], ['Premio', rd.win, 1], ['Saldo juego antes', rd.balanceBefore, 1], ['Saldo juego después', rd.balanceAfter, 1], ['Betsson antes', { wallet: rd.betsson?.before?.amount }, 1], ['Betsson después', { wallet: rd.betsson?.after?.amount }, 1], ['Moneda', rd.currency, 0], ['Ronda (rid)', rd.rid, 0]]
+    .map(([label, by, money]) => {
+      const vals = SOURCES.map((k) => by?.[k]).filter((v) => v !== undefined);
+      const agree = new Set(vals.map(String)).size <= 1;
+      return `<tr><th>${label}</th>${SOURCES.map((k) => by?.[k] === undefined ? '<td class="muted">—</td>' : `<td class="${agree ? 'agree' : 'dis'}">${esc(money ? eur(by[k]) : by[k])}</td>`).join('')}</tr>`;
+    }).join('') : '';
+  const span = rep.phases.reduce((a, p) => Math.max(a, p.endedAt - p.startedAt), 1);
+  $('#rview').innerHTML = `
+  <div class="card" style="margin-bottom:16px">
+    <div class="rhead"><h2>${esc(rep.game.name)} · ${SC[rep.scenario]}</h2><span class="verdict ${ok ? 'ok' : 'ko'}">${ok ? '✅ PASS' : '❌ FAIL'} · ${pass}/${rep.checks.length}</span>
+      <span class="muted small">${rep.market === 'mock' ? 'maqueta local' : 'betsson.' + rep.market} · modo ${rep.mode} · ${new Date(rep.startedAt).toLocaleString('es-ES')} · ronda ${secs(roundMs(s))}</span>
+      <span class="spacer"></span><a href="${base}/report.html" target="_blank">Informe completo (HTML) ↗</a></div>
+    ${r.mode && r.mode.bug !== 'none' ? `<div class="warnbox" style="margin:0 0 12px">Fallo provocado a propósito en la maqueta: <b>${BUG[r.mode.bug]}</b>. Lo esperado es que el validador lo cace.</div>` : ''}
+    <div class="scroll"><table><thead><tr><th>Resultado</th><th>Check</th><th>Esperado</th><th>Obtenido</th><th>Fuentes</th></tr></thead><tbody>
+    ${rep.checks.map((c) => `<tr><td><span class="res ${c.result === 'PASS' ? 'ok' : 'ko'}">${c.result === 'PASS' ? '✓ PASS' : '✕ FAIL'}</span></td><td><b>${esc(c.title)}</b><br><code>${esc(c.id)}</code></td><td>${esc(c.expected)}</td><td>${esc(c.observed)}</td><td>${c.sources.map((x) => `<span class="tag ${SRC[x]?.[1] ?? ''}">${SRC[x]?.[0] ?? x}</span>`).join(' ')}</td></tr><tr class="why"><td></td><td colspan="4">${esc(c.message)}</td></tr>`).join('')}
+    </tbody></table></div>
+  </div>
+  <div class="grid2">
+    <div class="card scroll"><h3>Un dato, varias fuentes</h3>${rd ? `<table><thead><tr><th></th>${SOURCES.map((k) => `<th>${SRC[k][0]}</th>`).join('')}</tr></thead><tbody>${multi}</tbody></table>${rd.findings?.length ? `<div class="warnbox">${rd.findings.map((f) => '⚠ ' + esc(f)).join('<br>')}</div>` : '<p class="small muted">Todas las invariantes se cumplen.</p>'}` : '<p class="muted">Sin datos de la ronda.</p>'}</div>
+    <div class="card"><h3>Lo que vio el validador</h3><div class="reads">${rep.visual.map((v) => `<div class="rd"><img src="${base}/${v.cropPath}" alt="${esc(v.field)}"><div><b>${{ rid: 'Ronda (#rid)', bet: 'Apuesta mostrada', message: 'Aviso' }[v.field] ?? v.field}</b><span>leído «${esc(v.raw)}» · confianza ${v.confidence.toFixed(2)}${v.language ? ' · idioma ' + v.language : ''}${v.reason ? ' · ' + esc(v.reason) : ''}</span></div></div>`).join('') || '<p class="muted">Sin lecturas.</p>'}</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>Capturas</h3><div class="gallery">${rep.artifacts.screenshots.map((x) => `<figure><a href="${base}/${x.path}" target="_blank"><img src="${base}/${x.path}" alt="${esc(x.label)}" loading="lazy"></a><figcaption>${esc(x.label)}</figcaption></figure>`).join('') || '<p class="muted">Sin capturas.</p>'}</div></div>
+    <div class="card"><h3>Fases</h3><div class="tl">${rep.phases.map((p) => `<div class="${p.status === 'failed' ? 'f' : p.status === 'skipped' ? 's' : ''}"><b>${p.phase}</b><div><div class="small">${esc(p.name)}${p.reason ? ` · <span class="muted">${esc(p.reason)}</span>` : ''}</div><div class="bar"><i style="width:${Math.max(2, (100 * (p.endedAt - p.startedAt)) / span)}%"></i></div></div><span class="small muted" style="text-align:right">${secs(p.endedAt - p.startedAt)}</span></div>`).join('')}</div></div>
+  </div>`;
+}
+
+// ---------------------------------------------------------------- métricas
+function renderMetrics() {
+  const rounds = S.runs.flatMap((r) => r.scenarios.map((s) => ({ ...s, mode: r.mode, target: r.target, at: r.at }))).filter((s) => roundMs(s) > 0);
+  const clean = rounds.filter((s) => !s.mode || s.mode.bug === 'none');
+  const provoked = rounds.filter((s) => s.mode && s.mode.bug !== 'none');
+  const avg = rounds.length ? rounds.reduce((a, s) => a + roundMs(s), 0) / rounds.length : 0;
+  const best = rounds.length ? Math.min(...rounds.map(roundMs)) : 0;
+  const games = new Set(rounds.map((s) => s.game));
+  const checks = rounds.reduce((a, s) => a + (s.checks ?? 0), 0);
+  $('#kpis').innerHTML = [
+    ['blue', rounds.length, 'rondas validadas'],
+    ['ok', clean.length ? Math.round((100 * clean.filter((s) => s.pass).length) / clean.length) + ' %' : '—', 'éxito sin fallos provocados'],
+    ['accent', provoked.length ? `${provoked.filter((s) => !s.pass).length}/${provoked.length}` : '—', 'fallos provocados cazados'],
+    ['', avg ? secs(avg) : '—', 'ronda media'],
+    ['', best ? secs(best) : '—', 'ronda más rápida'],
+    ['', `${games.size} · ${checks}`, 'juegos · checks evaluados'],
+  ].map(([c, v, l]) => `<div class="card kpi ${c}"><b>${v}</b><span>${l}</span></div>`).join('');
+  const per = PHASES.map(([p, n]) => { const xs = rounds.map((s) => s.phases?.[p]?.ms).filter((x) => x > 0); return { p, n, ms: xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0 }; });
+  const maxP = Math.max(1, ...per.map((x) => x.ms));
+  $('#phasebars').innerHTML = rounds.length ? per.map((x) => `<div><span>${x.p} ${x.n}</span><span class="track"><i style="width:${(100 * x.ms) / maxP}%"></i></span><span class="small muted" style="text-align:right">${secs(x.ms)}</span></div>`).join('') : '<p class="muted">Lanza alguna ejecución.</p>';
+  const lastN = rounds.slice(0, 24).reverse();
+  const maxR = Math.max(1, ...lastN.map(roundMs));
+  $('#vbars').innerHTML = lastN.map((s) => `<div class="${s.pass ? '' : 'ko'}" style="height:${(100 * roundMs(s)) / maxR}%" title="${esc(s.game)} · ${SC[s.scenario]} · ${secs(roundMs(s))}"></div>`).join('') || '<p class="muted">Sin datos.</p>';
+  const byGame = {};
+  for (const s of rounds) (byGame[s.game] ??= []).push(s);
+  $('#pergame').innerHTML = Object.entries(byGame).map(([g, xs]) => `<tr><td><b>${esc(g)}</b></td><td>${xs.length}</td><td>${xs.filter((s) => s.pass).length}</td><td>${secs(xs.reduce((a, s) => a + roundMs(s), 0) / xs.length)}</td><td>${secs(Math.min(...xs.map(roundMs)))}</td><td><span class="res ${xs[0].pass ? 'ok' : 'ko'}">${xs[0].pass ? 'PASS' : 'FAIL'}</span></td></tr>`).join('') || '<tr><td colspan="6" class="muted">Sin datos.</td></tr>';
+}
+
+// ---------------------------------------------------------------- tests
+const SUITES = { unit: ['🧪 Tests unitarios', 'Dinero, adaptador de Pragmatic, reglas con rondas reales, OCR sobre pantallas sintéticas, privacidad y escenario 2. Sin navegador ni credenciales.'], simulated: ['🎭 Escenarios simulados', 'Los dos escenarios de punta a punta con datos de rondas reales, navegador y OCR reales.'] };
+function renderTests() {
+  for (const suite of Object.keys(SUITES)) {
+    const r = S.tests[suite];
+    const running = S.tests.running === suite;
+    const byFile = {};
+    for (const t of r?.tests ?? []) (byFile[t.file] ??= []).push(t);
+    $('#t-' + suite).innerHTML = `<h3>${SUITES[suite][0]}</h3><p class="small muted" style="margin-top:-6px">${SUITES[suite][1]}</p>
+      <button class="btn primary" data-suite="${suite}" ${S.tests.running ? 'disabled' : ''}>${running ? '<span class="spin"></span> Ejecutando…' : '▶ Ejecutar'}</button>
+      ${r ? `<div class="tsum"><span><b style="color:var(--ok)">${r.passed}</b> <span class="muted">pasan</span></span><span><b style="color:${r.failed ? 'var(--ko)' : 'var(--muted)'}">${r.failed}</b> <span class="muted">fallan</span></span>${r.skipped ? `<span><b class="muted">${r.skipped}</b> <span class="muted">saltados</span></span>` : ''}<span class="muted small">${secs(r.durationMs)} · ${hhmm(r.at)}</span></div>
+      <div class="tlist">${Object.entries(byFile).map(([f, ts]) => `<div class="tfile">${esc(f)}</div>${ts.map((t) => `<div class="titem"><span>${t.status === 'passed' ? '✅' : t.status === 'skipped' ? '⏭️' : '❌'}</span><span>${esc(t.title)}</span><span class="ms">${t.ms} ms</span>${t.error ? `<span class="err">${esc(t.error)}</span>` : ''}</div>`).join('')}`).join('')}</div>` : '<p class="muted small" style="margin-top:12px">Sin ejecutar todavía.</p>'}`;
+  }
+  $$('[data-suite]').forEach((b) => (b.onclick = async () => { const r = await fetch('/tests?suite=' + b.dataset.suite, { method: 'POST' }); if (!r.ok) alert((await r.json()).error); }));
+}
+
+$('#clear').onclick = async () => {
+  if (!confirm('¿Borrar el historial de ejecuciones y sus informes guardados?')) return;
+  const r = await fetch('/api/runs', { method: 'DELETE' });
+  if (!r.ok) return alert((await r.json()).error);
+  S.reportSel = null; await loadRuns(); renderMetrics();
+};
+
+// ---------------------------------------------------------------- arranque
+$('#phaselist').innerHTML = PHASES.map(([p, n, d]) => `<div><b>${p}</b><span><b style="color:var(--fg)">${n}</b> · <span class="muted">${d}</span></span></div>`).join('');
+api('/api/tests').then((t) => { Object.assign(S.tests, t); renderTests(); }).catch(() => {});
+loadRuns();
+const fromHash = () => { const v = location.hash.slice(1); if (['demo', 'reports', 'metrics', 'tests', 'how'].includes(v)) show(v); };
+window.addEventListener('hashchange', fromHash);
+fromHash();
+</script>
+</body>
+</html>

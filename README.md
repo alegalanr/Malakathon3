@@ -40,6 +40,9 @@ docker compose -f tester/compose.yaml up -d control                 # las siguie
 
 - **▶ Lanzar demo en directo:** el navegador del validador retransmitido, las fases F0-F12 con su tiempo, los eventos, la red, la cartera, los recortes del OCR y cada check pasando a ✅ o ❌.
 - **Fallos provocados:** un botón por fallo. El validador lo caza en el check que toca.
+- **Juego por nombre y lotes:** escribe cualquier juego de Pragmatic Play o encola varios; se validan uno tras otro.
+- **Pestañas:** Demo en directo, Informes (cada informe legible en la página), Métricas (éxito, fallos cazados, tiempo por fase y por juego), Tests (unitarios y simulados desde la página) y Cómo funciona.
+- **Destino real:** betsson.es con la cuenta de prueba de `tester/.env`, con confirmación.
 - **Historial y agilidad:** tiempo por fase de cada ejecución y enlace a su informe.
 
 El centro de control trabaja contra una **maqueta local de Betsson + Pragmatic Play** (`tester/mock/`) que reproduce el comportamiento observado en la web real, y el validador corre en **modo real**: exactamente el mismo código que contra betsson.es. Solo hacen falta Git y Docker ([ARRANQUE.md](ARRANQUE.md)).

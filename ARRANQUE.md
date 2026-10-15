@@ -52,8 +52,23 @@ Opciones:
 |---|---|---|
 | `-Mixed` | `--mixed` | Demo con fallos provocados: **debe fallar**, solo en `S1-RID-VISIBLE` y `S2-MSG-LANG-VISIBLE`. El script comprueba que falla |
 | `-Real` | `--real` | Escenario 1 contra betsson.es con la cuenta de prueba. **Mueve dinero real** de la cuenta de prueba y pide confirmación |
+| `-Landing` | `--landing` | Deja abierta la **landing / centro de control** en <http://localhost:8095>: el validador en directo contra la maqueta local, con fallos provocados (ver abajo) |
 
-## 4. Resultado
+## 4. Landing y centro de control (la demo)
+
+Para enseñar el validador funcionando: **<http://localhost:8095>**. Si ya ejecutaste el script una vez, basta con:
+
+```bash
+docker compose -f tester/compose.yaml up -d control
+```
+
+1. Pulsa **▶ Lanzar demo en directo**: el validador entra en la maqueta de Betsson, busca Bubble Up, gira como un jugador y verás en directo su navegador, las fases con su tiempo, los eventos, la red, la cartera, los recortes del OCR y cada check pasando a ✅ o ❌.
+2. Para demostrar que caza errores, elige un **fallo provocado** (el wallet no abona el premio, moneda equivocada o aviso en inglés) y vuelve a lanzar: falla justo el check que toca.
+3. Abajo están el **tiempo por fase** y el **historial** con el informe de cada ejecución.
+
+Va contra la maqueta local (`tester/mock/`) en **modo real**: mismo código que contra betsson.es, sin el modo UI de Playwright. Para pararlo: `docker compose -f tester/compose.yaml stop control mock`.
+
+## 5. Resultado
 
 - Informes: `tester/reports/es-completed-spin/report.html` y `tester/reports/es-insufficient-balance/report.html`. Se abren con doble clic.
 - Para verlos servidos (con el informe de Playwright):
@@ -64,14 +79,14 @@ Opciones:
 
   y abre <http://localhost:9323>.
 
-## 5. Ejecución real (solo con las cuentas de prueba de Betsson)
+## 6. Ejecución real (solo con las cuentas de prueba de Betsson)
 
 1. Rellena `tester/.env` con las cuentas de prueba (`BETSSON_ES_USER`, `BETSSON_ES_PASS` y, para el escenario 2, `BETSSON_ES_EMPTY_USER`, `BETSSON_ES_EMPTY_PASS`). **Nunca una cuenta personal.**
 2. Ejecuta el script con `-Real` / `--real`.
 3. **No lances dos ejecuciones reales a la vez** con la misma cuenta (en CI y en local, o en dos ordenadores): los saldos no cuadrarían y se gastaría dinero de más.
 4. Antes de compartir nada, **revisa a mano las capturas** de `tester/reports/es-*/evidence/`. Hay máscaras y una revisión automática, pero los selectores de la web no se han podido comprobar todavía con sesión.
 
-## 6. Problemas habituales
+## 7. Problemas habituales
 
 | Mensaje o síntoma | Solución |
 |---|---|
@@ -81,6 +96,8 @@ Opciones:
 | `... no se puede cargar porque la ejecución de scripts está deshabilitada` (Windows) | Usa exactamente `powershell -ExecutionPolicy Bypass -File .\arranque.ps1`: no cambia la configuración del sistema |
 | `npm ci` falla con `EACCES` (Linux) | El contenedor trabaja como el usuario 1000: `sudo chown -R 1000:1000 tester` |
 | `port is already allocated` (8080 o 9323) | Cierra lo que use ese puerto. Solo afecta al modo UI y al informe servido |
+| `port is already allocated` (8090, 8091 u 8095) | Lo usa otra cosa o una landing anterior: `docker compose -f tester/compose.yaml stop control mock` y vuelve a lanzar |
+| La landing dice «Sin conexión» | El centro de control no está arrancado: `docker compose -f tester/compose.yaml up -d control` |
 | La descarga de la imagen se queda parada | Comprueba la conexión, o un proxy o VPN. Vuelve a ejecutar: retoma la descarga |
 | Avisos `npm notice New major version of npm` o `npm audit` | Se pueden ignorar. **No ejecutes `npm audit fix --force`**: cambia versiones y puede romper el tester |
 | Los tests del OCR tardan la primera vez | Es normal: carga los datos de idioma |
@@ -94,6 +111,7 @@ docker compose -f tester/compose.yaml run --rm tester npm run typecheck
 docker compose -f tester/compose.yaml run --rm tester npm run unit
 docker compose -f tester/compose.yaml run --rm -e RUN_MODE=simulated tester npx playwright test --project=es
 docker compose -f tester/compose.yaml run --rm -e RUN_MODE=simulated -e SIMULATION=mixed tester npx playwright test --project=es
+docker compose -f tester/compose.yaml up -d control   # landing / centro de control → http://localhost:8095
 docker compose -f tester/compose.yaml up        # modo UI de Playwright → http://localhost:8080
 ```
 

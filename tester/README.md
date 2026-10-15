@@ -41,6 +41,47 @@ Otros comandos (`docker compose -f tester/compose.yaml run --rm tester …`):
 
 Tras cada escenario: **`tester/reports/es-<escenario>/report.html`** (el entregable: checks con esperado, obtenido, fuentes y evidencias), `report.json` (C14), `timeline.jsonl` censurado y `evidence/` (capturas y recortes del OCR). La traza de Playwright queda en `test-results/` y no se publica (D9).
 
+## Centro de control (landing de la integración)
+
+Página en directo para enseñar y usar el validador sin el modo UI de Playwright: **<http://localhost:8095>**.
+
+```bash
+docker compose -f tester/compose.yaml up -d control     # levanta también la maqueta (mock)
+```
+
+- **Pestañas:**
+  - **Demo en directo:** destino (maqueta local o betsson.es real, con confirmación), **juego por nombre** con sugerencias, **lote** de varios juegos, escenario, fallo provocado y premio. Muestra el navegador del validador en directo, las fases F0-F12 con su tiempo, los checks pasando a ✅/❌, los recortes del OCR y, plegados, eventos, red y cartera.
+  - **Informes:** cada ronda del historial con su informe legible dentro de la página: veredicto, checks con esperado/obtenido/fuentes, «un dato, varias fuentes», lecturas del OCR con su recorte, capturas y fases. Cada ronda guarda su copia en `reports/history/`.
+  - **Métricas:** rondas, éxito sin fallos provocados, fallos provocados cazados, ronda media y más rápida, tiempo medio por fase, duración de las últimas rondas y tabla por juego. Botón para limpiar el historial.
+  - **Tests:** lanza los tests unitarios y los escenarios simulados desde la página y enseña el resultado de cada test.
+  - **Cómo funciona:** las cuatro fuentes, las fases y por qué es rápido.
+- **Juego por nombre:** cualquier nombre. Se busca en el lobby como un jugador y, si no aparece, se abre su página (`/casino/tragaperras-slots/<nombre>`). La maqueta sirve cualquier juego con su nombre y colores propios.
+- **Contra qué:** la maqueta local de Betsson + Pragmatic Play (`tester/mock/`, mercado `mock`), en **modo real**: mismo código que contra betsson.es (login, búsqueda, Real Play, DGOJ, eventos, `doSpin`/`doCollect`, cartera).
+- **Fallos provocados** (botones del panel o `POST /fault?bug=…`): `no-credit` (el wallet no abona el premio), `currency` (moneda equivocada), `lang` (aviso en inglés).
+- **Destino real:** usa `tester/.env` (`BETSSON_ES_USER`/`PASS`) y pide escribir «SI»; hoy el anti-bot bloquea el login automático y se para en F1 con el motivo.
+- **Robustez:** si la maqueta se reinicia, el panel descarta sus sesiones guardadas; sin sesión, F1 falla en ~3 s en vez de esperar 40 s.
+- **Cómo:** `control/server.mjs` lanza un proceso de Playwright por ronda con `LIVE_URL`; el validador publica lo que observa (ya censurado) con `src/live/LiveFeed.ts` y el panel lo recibe por SSE. Sin `LIVE_URL`, el validador funciona igual que siempre.
+
+**Agilidad** (medido el 15/10, escenario 1 contra la maqueta):
+
+| | Antes | Ahora |
+|---|---|---|
+| Ronda (F0-F12) | 26,1 s | 11,2 s |
+| De pulsar «Lanzar» al informe | 31,1 s | 12,7 s |
+| F1 (sesión) | 13,6 s | < 0,2 s |
+
+Por qué: la sesión se reutiliza si tiene menos de 30 min (`REUSE_SESSION=1`) y solo se inicia la de la cuenta del escenario (`LOGIN_SCENARIOS`); no se espera al banner de cookies si el consentimiento ya está guardado; la sesión se da por buena en cuanto responde la cartera, sin esperas fijas. Si F1 falla con una sesión reutilizada, el panel la borra y la siguiente ejecución vuelve a iniciar sesión.
+
+**Verificado desde el panel (15/10):**
+
+| Escenario | Fallo provocado | Resultado | Check que lo caza |
+|---|---|---|---|
+| Tirada completada | ninguno | ✅ 8/8 | — |
+| Tirada completada | el wallet no abona | ❌ 7/8 | `S1-BETSSON-BALANCE` |
+| Tirada completada | moneda equivocada | ❌ 7/8 | `S1-CURRENCY` |
+| Saldo insuficiente | ninguno | ✅ 6/6 | — |
+| Saldo insuficiente | aviso en inglés | ❌ 5/6 | `S2-MSG-LANG-VISIBLE` |
+
 ## Cómo funciona
 
 ```
