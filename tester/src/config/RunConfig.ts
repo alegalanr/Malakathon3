@@ -44,6 +44,7 @@ export function loadRunConfig(market: MarketId, scenario: Scenario, mode: 'real'
     maxBet: maxBetEnv ?? eurosToCents(all.game.maxBet),
     ocr: all.ocr,
     credentialEnv,
+    privacy: all.privacy,
   });
   if (!parsed.success) throw new ConfigError(`markets.json no cumple el contrato C1: ${parsed.error.issues.map((i) => i.path.join('.') + ' ' + i.message).join('; ')}`);
   const cfg = parsed.data;

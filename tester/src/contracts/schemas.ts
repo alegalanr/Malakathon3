@@ -47,6 +47,8 @@ export const RunConfig = z.object({
   }),
   // Las credenciales nunca se serializan: solo se guarda el nombre de las variables.
   credentialEnv: z.object({ userEnv: z.string(), passEnv: z.string() }),
+  // Zonas de la web de Betsson que se tapan en las capturas de página completa (nombre de la cuenta, perfil…)
+  privacy: z.object({ maskSelectors: z.array(z.string()) }).optional(),
 });
 export type RunConfig = z.infer<typeof RunConfig>;
 

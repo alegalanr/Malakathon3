@@ -50,6 +50,14 @@
     "path": "/casino/tragaperras-slots/bubble-up",
     "maxBet": 5
   },
+  "privacy": {
+    "maskSelectors": [
+      "header",
+      "[data-test-id*='account' i]", "[data-testid*='account' i]", "[class*='account' i]",
+      "[class*='username' i]", "[class*='user-name' i]", "[class*='profile' i]",
+      "[aria-label*='cuenta' i]", "[aria-label*='perfil' i]", "[aria-label*='account' i]"
+    ]
+  },
   "ocr": {
     "languages": ["eng", "spa"],
     "minConfidence": 0.6,

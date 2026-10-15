@@ -1,8 +1,11 @@
 /**
  * Envoltorio de tesseract.js: un único worker reutilizado (eng + spa), cargado una vez (F0).
- * Los datos de idioma se guardan en .cache/tesseract para no descargarlos en cada ejecución.
- * Con TESSDATA_DIR (carpeta con <lang>.traineddata.gz) se usan datos locales y no se descarga nada.
+ * Datos de idioma, por orden:
+ *  1. TESSDATA_DIR (carpeta con <lang>.traineddata.gz), si está definida;
+ *  2. .cache/tessdata, que prepara `npm install` desde los paquetes @tesseract.js-data (integridad por package-lock);
+ *  3. si no hay ninguno, descarga del CDN de jsDelivr, guardada en .cache/tesseract.
  */
+import fs from 'node:fs';
 import path from 'node:path';
 import { createWorker, PSM, type Worker } from 'tesseract.js';
 
@@ -21,6 +24,16 @@ export interface OcrResult {
 export type OcrMode = 'line' | 'block' | 'sparse';
 const PSM_OF: Record<OcrMode, PSM> = { line: PSM.SINGLE_LINE, block: PSM.SINGLE_BLOCK, sparse: PSM.SPARSE_TEXT };
 
+const VENDORED = path.join(__dirname, '..', '..', '.cache', 'tessdata');
+
+/** Carpeta local con todos los idiomas pedidos, o undefined para descargarlos. */
+function localTessdata(languages: string[]): string | undefined {
+  for (const dir of [process.env.TESSDATA_DIR, VENDORED]) {
+    if (dir && languages.every((l) => fs.existsSync(path.join(dir, `${l}.traineddata.gz`)))) return dir;
+  }
+  return undefined;
+}
+
 const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
 const clamp01 = (n: number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 
@@ -33,7 +46,7 @@ export class OcrEngine {
 
   async init(languages: string[]) {
     try {
-      const local = process.env.TESSDATA_DIR;
+      const local = localTessdata(languages);
       this.worker = await createWorker(languages, 1, {
         ...(local ? { langPath: path.resolve(local), gzip: true, cacheMethod: 'none' } : { cachePath: path.join(__dirname, '..', '..', '.cache', 'tesseract') }),
         logger: () => {},
