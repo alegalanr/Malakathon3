@@ -47,7 +47,7 @@ export function loadRunConfig(market: MarketId, scenario: Scenario, mode: 'real'
   });
   if (!parsed.success) throw new ConfigError(`markets.json no cumple el contrato C1: ${parsed.error.issues.map((i) => i.path.join('.') + ' ' + i.message).join('; ')}`);
   const cfg = parsed.data;
-  const expectedCurrency = { es: 'EUR', com: 'EUR', pe: 'PEN' }[market];
+  const expectedCurrency = { es: 'EUR', com: 'EUR', pe: 'PEN', mock: 'EUR' }[market];
   if (cfg.currency !== expectedCurrency) throw new ConfigError(`la moneda de ${market} debería ser ${expectedCurrency}`);
   return cfg;
 }
@@ -60,7 +60,7 @@ export function readCredentials(cfg: RunConfig): { user: string; pass: string } 
 }
 
 export const runMode = (): 'real' | 'simulated' => (process.env.RUN_MODE === 'simulated' ? 'simulated' : 'real');
-export const marketFromEnv = (): MarketId => (['es', 'com', 'pe'].includes(process.env.MARKET ?? '') ? (process.env.MARKET as MarketId) : 'es');
+export const marketFromEnv = (): MarketId => (['es', 'com', 'pe', 'mock'].includes(process.env.MARKET ?? '') ? (process.env.MARKET as MarketId) : 'es');
 
 export const AUTH_DIR = path.join(__dirname, '..', '..', '.auth');
 export const authFile = (market: MarketId, scenario: Scenario) => path.join(AUTH_DIR, `${market}-${scenario}.json`);

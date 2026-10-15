@@ -1,4 +1,35 @@
 {
+  "mock": {
+    "baseUrl": "http://mock:8090",
+    "casinoPath": "/casino",
+    "loginPath": "/inicio?returnUrl=%2Fcasino",
+    "language": "es",
+    "locale": "es-ES",
+    "timezone": "Europe/Madrid",
+    "currency": "EUR",
+    "currencySymbol": "€",
+    "numberFormat": {
+      "decimal": ",",
+      "thousands": "."
+    },
+    "texts": {
+      "insufficientBalance": [
+        "saldo insuficiente",
+        "fondos insuficientes",
+        "sin fondos",
+        "insuficiente",
+        "no tienes suficiente"
+      ]
+    },
+    "credentials": {
+      "userEnv": "MOCK_USER",
+      "passEnv": "MOCK_PASS"
+    },
+    "noBalanceCredentials": {
+      "userEnv": "MOCK_EMPTY_USER",
+      "passEnv": "MOCK_EMPTY_PASS"
+    }
+  },
   "es": {
     "baseUrl": "https://www.betsson.es",
     "casinoPath": "/casino",
@@ -8,12 +39,27 @@
     "timezone": "Europe/Madrid",
     "currency": "EUR",
     "currencySymbol": "€",
-    "numberFormat": { "decimal": ",", "thousands": "." },
-    "texts": {
-      "insufficientBalance": ["saldo insuficiente", "fondos insuficientes", "sin fondos", "insuficiente", "no tienes suficiente"]
+    "numberFormat": {
+      "decimal": ",",
+      "thousands": "."
     },
-    "credentials": { "userEnv": "BETSSON_ES_USER", "passEnv": "BETSSON_ES_PASS" },
-    "noBalanceCredentials": { "userEnv": "BETSSON_ES_EMPTY_USER", "passEnv": "BETSSON_ES_EMPTY_PASS" }
+    "texts": {
+      "insufficientBalance": [
+        "saldo insuficiente",
+        "fondos insuficientes",
+        "sin fondos",
+        "insuficiente",
+        "no tienes suficiente"
+      ]
+    },
+    "credentials": {
+      "userEnv": "BETSSON_ES_USER",
+      "passEnv": "BETSSON_ES_PASS"
+    },
+    "noBalanceCredentials": {
+      "userEnv": "BETSSON_ES_EMPTY_USER",
+      "passEnv": "BETSSON_ES_EMPTY_PASS"
+    }
   },
   "com": {
     "baseUrl": "https://www.betsson.com",
@@ -24,10 +70,24 @@
     "timezone": "Europe/Malta",
     "currency": "EUR",
     "currencySymbol": "€",
-    "numberFormat": { "decimal": ".", "thousands": "," },
-    "texts": { "insufficientBalance": ["insufficient", "not enough"] },
-    "credentials": { "userEnv": "BETSSON_COM_USER", "passEnv": "BETSSON_COM_PASS" },
-    "noBalanceCredentials": { "userEnv": "BETSSON_COM_EMPTY_USER", "passEnv": "BETSSON_COM_EMPTY_PASS" }
+    "numberFormat": {
+      "decimal": ".",
+      "thousands": ","
+    },
+    "texts": {
+      "insufficientBalance": [
+        "insufficient",
+        "not enough"
+      ]
+    },
+    "credentials": {
+      "userEnv": "BETSSON_COM_USER",
+      "passEnv": "BETSSON_COM_PASS"
+    },
+    "noBalanceCredentials": {
+      "userEnv": "BETSSON_COM_EMPTY_USER",
+      "passEnv": "BETSSON_COM_EMPTY_PASS"
+    }
   },
   "pe": {
     "baseUrl": "https://www.betsson.pe",
@@ -38,10 +98,24 @@
     "timezone": "America/Lima",
     "currency": "PEN",
     "currencySymbol": "S/",
-    "numberFormat": { "decimal": ".", "thousands": "," },
-    "texts": { "insufficientBalance": ["insuficiente", "sin fondos"] },
-    "credentials": { "userEnv": "BETSSON_PE_USER", "passEnv": "BETSSON_PE_PASS" },
-    "noBalanceCredentials": { "userEnv": "BETSSON_PE_EMPTY_USER", "passEnv": "BETSSON_PE_EMPTY_PASS" }
+    "numberFormat": {
+      "decimal": ".",
+      "thousands": ","
+    },
+    "texts": {
+      "insufficientBalance": [
+        "insuficiente",
+        "sin fondos"
+      ]
+    },
+    "credentials": {
+      "userEnv": "BETSSON_PE_USER",
+      "passEnv": "BETSSON_PE_PASS"
+    },
+    "noBalanceCredentials": {
+      "userEnv": "BETSSON_PE_EMPTY_USER",
+      "passEnv": "BETSSON_PE_EMPTY_PASS"
+    }
   },
   "game": {
     "provider": "pragmatic",
@@ -51,9 +125,20 @@
     "maxBet": 5
   },
   "ocr": {
-    "languages": ["eng", "spa"],
+    "languages": [
+      "eng",
+      "spa"
+    ],
     "minConfidence": 0.6,
     "maxAttempts": 3,
-    "anchors": { "bet": ["APUESTA", "BET"], "rid": ["#"] }
+    "anchors": {
+      "bet": [
+        "APUESTA",
+        "BET"
+      ],
+      "rid": [
+        "#"
+      ]
+    }
   }
 }

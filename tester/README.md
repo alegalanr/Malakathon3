@@ -25,6 +25,22 @@ Todo en Docker (imagen oficial de Playwright); en el host no se instala nada.
    docker compose -f tester/compose.yaml up
    ```
 
+### Demo completa contra la maqueta local (modo real, mismo código)
+
+`tester/mock/` es una maqueta de betsson.es + Pragmatic Play con lo que verificó el equipo (`SOLUCION.md` §2): banner OneTrust, login, buscador, «Jugar», sesión de juego DGOJ, cartera `/api/v2/wallet/balance`, juego en canvas en un iframe de otro origen, eventos `postMessage` (con valores arrastrados y céntimos) y `doSpin`/`doCollect` contra el mismo wallet. El tester corre en modo **real**, sin atajos.
+
+```bash
+docker compose -f tester/compose.yaml run --rm -e MARKET=mock tester npx playwright test --project=mock
+```
+
+Informes en `tester/reports/mock-*/report.html`. La maqueta se ve en <http://localhost:8090> (cuentas de prueba en `compose.yaml`). Para enseñar un FAIL provocado (el wallet de Betsson no abona el premio):
+
+```bash
+curl -X POST "http://localhost:8090/__mock?win=always&bug=no-credit"   # después: ?win=random&bug=none
+```
+
+Resultado verificado (15/10): escenario 1 → 8/8 PASS (ronda con premio: `doSpin` con `na=c` + `doCollect`); escenario 2 → 6/6 PASS; con `bug=no-credit` falla solo `S1-BETSSON-BALANCE` (esperado 101,00 €, cartera 99,00 €) y el resto sigue en PASS.
+
 ### Login hecho por una persona (si el login automático lo bloquea el anti-bot)
 
 El login automático lo bloquea la web («Actualiza la página y vuelve a intentarlo…», ver `docs/web-betsson.md`). Sin saltarse nada: inicias sesión tú en un navegador visible y el tester reutiliza esa sesión. El tester no modifica el navegador ni oculta que está automatizado; si la web bloquea también la sesión automatizada, F1 se para con el motivo.

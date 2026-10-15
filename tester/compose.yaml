@@ -13,6 +13,12 @@ services:
     user: "1000:1000"
     environment:
       HOME: /tmp/home
+      # Cuentas de prueba de la maqueta local (tester/mock), no de Betsson
+      MOCK_USER: qa-demo
+      MOCK_PASS: mock-1234
+      MOCK_EMPTY_USER: qa-empty
+      MOCK_EMPTY_PASS: mock-1234
+    depends_on: [mock]
     # Credenciales: .env de la raíz del repo y/o tester/.env (este manda si están en los dos)
     env_file:
       - path: ../.env
@@ -26,6 +32,24 @@ services:
       - "127.0.0.1:9323:9323"   # informe HTML
     ipc: host                   # Chromium necesita más memoria compartida
     command: npm run ui
+
+  # Maqueta local de Betsson (:8090) + Pragmatic Play (:8091) para demostrar el tester en modo real:
+  #   docker compose -f tester/compose.yaml run --rm -e MARKET=mock tester npx playwright test --project=mock
+  mock:
+    image: mcr.microsoft.com/playwright:v1.56.0-noble
+    working_dir: /work
+    user: "1000:1000"
+    environment:
+      MOCK_USER: qa-demo
+      MOCK_PASS: mock-1234
+      MOCK_EMPTY_USER: qa-empty
+      MOCK_EMPTY_PASS: mock-1234
+    volumes:
+      - .:/work
+    ports:
+      - "127.0.0.1:8090:8090"
+      - "127.0.0.1:8091:8091"
+    command: node mock/server.mjs
 
   # Login hecho por una persona en un navegador visible (usa tu pantalla). Una vez por sesión gráfica:
   #   xhost +SI:localuser:$USER        (se deshace con: xhost -SI:localuser:$USER)

@@ -16,7 +16,7 @@ const market = process.env.MARKET ?? 'es';
 const scenario = process.argv[2] ?? 'completed-spin';
 const cfg = JSON.parse(fs.readFileSync(path.join(root, 'config', 'markets.json'), 'utf8'))[market];
 const file = path.join(root, '.auth', `${market}-${scenario}.json`);
-const TIMEOUT_MS = 5 * 60 * 1000;
+const TIMEOUT_MS = Number(process.env.LOGIN_TIMEOUT_S ?? 300) * 1000;
 
 if (!process.env.DISPLAY) {
   console.error('✘ No hay pantalla (DISPLAY). Usa: docker compose -f tester/compose.yaml run --rm login');
@@ -34,8 +34,20 @@ const loggedIn = new Promise((resolve) => {
   });
 });
 
-await page.goto(cfg.baseUrl + cfg.loginPath, { waitUntil: 'domcontentloaded' });
-console.log(`Inicia sesión en la ventana del navegador (${scenario}). Tienes 5 minutos.`);
+// /inicio redirige por su cuenta (net::ERR_ABORTED): se abre el casino y la ventana de login con su botón
+try {
+  await page.goto(cfg.baseUrl + cfg.casinoPath, { waitUntil: 'domcontentloaded' });
+} catch (e) {
+  console.warn(`Aviso al abrir ${cfg.baseUrl}: ${e.message.split('\n')[0]}`);
+}
+try {
+  const button = page.locator('fds-button').filter({ hasText: /^\s*Iniciar sesi[oó]n\s*$/i }).first();
+  await button.waitFor({ state: 'visible', timeout: 15_000 });
+  await button.click();
+} catch {
+  console.warn('No se pudo abrir la ventana de login automáticamente: pulsa «Iniciar sesión» tú.');
+}
+console.log(`Inicia sesión en la ventana del navegador (${scenario}). Tienes ${TIMEOUT_MS / 60000} minutos.`);
 
 const ok = await Promise.race([loggedIn, new Promise((r) => setTimeout(() => r(false), TIMEOUT_MS))]);
 if (!ok) {
