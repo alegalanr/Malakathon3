@@ -229,6 +229,7 @@ ul.clean{margin:0;padding-left:18px;color:#cdd6ea}ul.clean li{margin:5px 0}
             <button class="btn" data-v="currency">💱 Moneda equivocada</button>
             <button class="btn" data-v="lang">🌐 Aviso en inglés</button>
           </div>
+          <div class="small muted" id="bughint" style="margin-top:8px"></div>
         </div>
         <div class="field" id="winbox"><label>Premio</label>
           <div class="seg" id="win"><button class="btn on" data-v="random">Aleatorio</button><button class="btn" data-v="always">Siempre</button><button class="btn" data-v="never">Nunca</button></div>
@@ -349,7 +350,20 @@ function seg(id, key, after) {
 }
 seg('target', 'target', () => { const real = S.target === 'real'; $('#realwarn').hidden = !real; $('#faultbox').hidden = real; $('#winbox').hidden = real; });
 seg('scenario', 'scenario');
-seg('bug', 'bug', fault);
+// Dónde se nota cada fallo: se ajusta el escenario para que el fallo tenga ocasión de aparecer
+const BUG_HINT = {
+  none: '',
+  'no-credit': 'Se nota en «Tirada completada»: la maqueta da premio siempre y la cartera de Betsson no lo abona.',
+  currency: 'Se nota en los dos escenarios: el juego muestra y envía otra moneda.',
+  lang: 'Se nota en «Saldo insuficiente»: el aviso sale en inglés.',
+};
+function pickScenario(v) { S.scenario = v; $$('#scenario .btn').forEach((x) => x.classList.toggle('on', x.dataset.v === v)); }
+seg('bug', 'bug', () => {
+  $('#bughint').textContent = BUG_HINT[S.bug];
+  if (S.bug === 'lang' && S.scenario === 'completed-spin') pickScenario('insufficient-balance');
+  if (S.bug === 'no-credit' && S.scenario === 'insufficient-balance') pickScenario('completed-spin');
+  fault();
+});
 seg('win', 'win', fault);
 async function fault() { await fetch(`/fault?bug=${S.bug}&win=${S.win}`, { method: 'POST' }).catch(() => {}); }
 function renderBatch() {

@@ -220,7 +220,8 @@ http
         const bet = Math.round(Number(p.get('c')) * Number(p.get('l')) * 100);
         if (acc.balance < bet) return send(res, 200, 'text/plain', 'SystemError=7&nomoney=1');
         acc.balance -= bet; // el proveedor cobra la apuesta al wallet de Betsson
-        const win = mode.win === 'always' || (mode.win === 'random' && Math.random() < 0.4) ? bet * 2 : 0;
+        // «El wallet no abona el premio» solo se nota si hay premio: con ese fallo, siempre hay premio
+        const win = mode.bug === 'no-credit' || mode.win === 'always' || (mode.win === 'random' && Math.random() < 0.4) ? bet * 2 : 0;
         const rid = String(++ridSeq);
         if (win) pending.set(user, win);
         return send(res, 200, 'text/plain', `tw=${eur(win)}&balance=${eur(acc.balance)}&rid=${rid}&na=${win ? 'c' : 's'}&c=${p.get('c')}&l=${p.get('l')}`);
