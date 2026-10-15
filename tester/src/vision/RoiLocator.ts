@@ -21,14 +21,19 @@ export async function locateRois(ocr: OcrEngine, gamePng: Buffer, cfg: RunConfig
   const H = meta.height!;
   const bandTop = Math.round(H * 0.7);
   const scale = 2;
-  const band = await sharp(gamePng)
-    .extract({ left: 0, top: bandTop, width: W, height: H - bandTop })
-    .grayscale()
-    .resize({ width: W * scale })
-    .normalize()
-    .png()
-    .toBuffer();
-  const { words } = await ocr.recognize(band, { mode: 'sparse' });
+  const bandOf = (negate: boolean) => {
+    let p = sharp(gamePng).extract({ left: 0, top: bandTop, width: W, height: H - bandTop }).grayscale().resize({ width: W * scale });
+    if (negate) p = p.negate({ alpha: false });
+    return p.normalize().png().toBuffer();
+  };
+  const betAnchorsN = cfg.ocr.anchors.bet.map(norm);
+  const hasAnchor = (ws: OcrWord[]) => ws.some((w) => betAnchorsN.some((a) => norm(w.text).startsWith(a)));
+  let { words } = await ocr.recognize(await bandOf(false), { mode: 'sparse' });
+  // ✔ (15/10) Texto claro sobre el fondo del juego: a veces solo se lee invertido
+  if (!hasAnchor(words)) {
+    const inv = await ocr.recognize(await bandOf(true), { mode: 'sparse' });
+    if (hasAnchor(inv.words)) words = inv.words;
+  }
   const toAbs = (w: OcrWord) => ({
     x0: w.bbox.x0 / scale,
     x1: w.bbox.x1 / scale,

@@ -19,6 +19,28 @@ export interface WitnessRequest {
   recapture?: () => Promise<Buffer | null>;
 }
 
+/**
+ * Preprocesados del recorte, en orden. ✔ (15/10, Bubble Up, sin conexión sobre capturas reales) El texto de la
+ * barra inferior es claro y pequeño (rid de ~8 px): invertido, sin umbral y ampliado ×5-×8 lee «4,00 €» con
+ * confianza 0,90 y el rid entero; el umbral fijo de 150 lo destrozaba. Los mensajes (escenario 2) siguen
+ * con el preprocesado de siempre.
+ */
+interface Variant {
+  scale: number;
+  negate: boolean | 'auto';
+  threshold?: number;
+}
+const BAR_VARIANTS: Variant[] = [
+  { scale: 8, negate: true },
+  { scale: 5, negate: true },
+  { scale: 3, negate: true },
+  { scale: 5, negate: false, threshold: 150 },
+];
+const MESSAGE_VARIANTS: Variant[] = [
+  { scale: 3, negate: 'auto', threshold: 150 },
+  { scale: 4, negate: false, threshold: 150 },
+];
+
 const OTHER_LANG_WORDS: Record<'es' | 'en', string[]> = {
   es: ['insuficiente', 'saldo', 'fondos', 'no tienes', 'suficiente', 'deposita'],
   en: ['insufficient', 'not enough', 'funds', 'balance', 'deposit'],
@@ -84,21 +106,23 @@ export class ScreenWitness {
         await new Promise((r) => setTimeout(r, 500));
         png = (await req.recapture()) ?? png;
       }
+      const variants = field === 'message' ? [MESSAGE_VARIANTS[Math.min(attempt, MESSAGE_VARIANTS.length) - 1]] : BAR_VARIANTS;
       for (const roi of candidates) {
-        attempts++;
-        const variant = attempt === 2 ? 'x4' : 'x3';
-        const crop = await this.crop(png, roi, variant);
-        const res = await this.ocr.recognize(crop.processed, {
-          mode: field === 'message' ? 'block' : 'line',
-          whitelist: field === 'rid' ? '#0123456789' : field === 'bet' ? '0123456789.,€S/ ' : undefined,
-        });
-        const reading = this.interpret(field, res.text, res.confidence, roi, cfg);
-        const cropPath = this.saveCrop(field, crop.raw);
-        const full: VisualReading = { ...reading, cropPath, attempts };
-        if (!best || (full.value !== null && (best.value === null || full.confidence > best.confidence))) best = full;
-        if (full.value !== null && full.confidence >= cfg.ocr.minConfidence) {
-          if (field !== 'message') located[field] = roi;
-          return full;
+        for (const variant of variants) {
+          attempts++;
+          const crop = await this.crop(png, roi, variant);
+          const res = await this.ocr.recognize(crop.processed, {
+            mode: field === 'message' ? 'block' : 'line',
+            whitelist: field === 'rid' ? '#0123456789' : field === 'bet' ? '0123456789.,€S/ ' : undefined,
+          });
+          const reading = this.interpret(field, res.text, res.confidence, roi, cfg);
+          const cropPath = this.saveCrop(field, crop.raw);
+          const full: VisualReading = { ...reading, cropPath, attempts };
+          if (!best || (full.value !== null && (best.value === null || full.confidence > best.confidence))) best = full;
+          if (this.good(field, full, cfg)) {
+            if (field !== 'message') located[field] = roi;
+            return full;
+          }
         }
       }
       // Si la zona guardada ya no contiene el ancla, se vuelve a buscar
@@ -107,6 +131,16 @@ export class ScreenWitness {
       }
     }
     return best ?? this.failed(field, png, null, 'lectura vacía tras los reintentos', attempts);
+  }
+
+  /**
+   * Lectura aceptable. El rid se acepta por forma (# y 12-20 dígitos) aunque tesseract dé confianza baja con
+   * texto tan pequeño: el check lo compara después con el rid del servidor.
+   */
+  private good(field: VisualField, r: VisualReading, cfg: RunConfig): boolean {
+    if (r.value === null) return false;
+    if (field === 'rid') return /#/.test(r.raw) && String(r.value).length >= 12 && String(r.value).length <= 20;
+    return r.confidence >= cfg.ocr.minConfidence;
   }
 
   private interpret(field: VisualField, raw: string, confidence: number, roi: Roi, cfg: RunConfig): Omit<VisualReading, 'cropPath' | 'attempts'> {
@@ -123,7 +157,7 @@ export class ScreenWitness {
     return { field, raw: text, value: text ? normText(text) : null, confidence, roi, language: lang.language, reason: text ? undefined : 'sin texto' };
   }
 
-  private async crop(png: Buffer, roi: Roi, variant: 'x3' | 'x4') {
+  private async crop(png: Buffer, roi: Roi, variant: Variant) {
     const meta = await sharp(png).metadata();
     const W = meta.width!;
     const H = meta.height!;
@@ -132,13 +166,18 @@ export class ScreenWitness {
     const width = Math.max(4, Math.min(W - left, Math.ceil(roi.rw * W)));
     const height = Math.max(4, Math.min(H - top, Math.ceil(roi.rh * H)));
     const raw = await sharp(png).extract({ left, top, width, height }).png().toBuffer();
-    const gray = sharp(raw).grayscale();
-    const { dominant } = await gray.clone().stats();
-    // Texto claro sobre fondo oscuro (lo habitual en las barras de los juegos) → invertir en el 1.er intento
-    const dark = dominant.r < 110;
-    let pipe = sharp(raw).grayscale().resize({ width: width * (variant === 'x4' ? 4 : 3) });
-    if (dark && variant === 'x3') pipe = pipe.negate({ alpha: false });
-    const processed = await pipe.normalize().threshold(150).png().toBuffer();
+    let negate = variant.negate === true;
+    if (variant.negate === 'auto') {
+      // Texto claro sobre fondo oscuro → invertir
+      const { dominant } = await sharp(raw).grayscale().stats();
+      negate = dominant.r < 110;
+    }
+    let pipe = sharp(raw).grayscale().resize({ width: width * variant.scale, kernel: 'lanczos3' });
+    if (negate) pipe = pipe.negate({ alpha: false });
+    pipe = pipe.normalize();
+    if (variant.threshold) pipe = pipe.threshold(variant.threshold);
+    // Margen alrededor: tesseract lee peor el texto pegado al borde
+    const processed = await pipe.extend({ top: 20, bottom: 20, left: 20, right: 20, background: negate ? '#ffffff' : '#000000' }).png().toBuffer();
     return { raw, processed };
   }
 
