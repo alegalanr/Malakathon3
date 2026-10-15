@@ -1,6 +1,8 @@
 # Diseño del bot
 
 > Es una **propuesta**: se confirma o se cambia cuando sepamos más de la web (ver [web-betsson.md](web-betsson.md)).
+>
+> **Ojo:** se escribió antes del enunciado oficial y parte ya no vale (juego nuevo, modo demo, veredicto por tráfico de red). Qué cambia: [reto.md](reto.md#impacto-en-lo-que-ya-tenemos).
 
 ## Idea general
 

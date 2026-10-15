@@ -17,6 +17,6 @@ El agente crea la rama, abre el PR y mantiene [ESTADO.md](ESTADO.md) al día. Su
 
 ## Nunca
 
-- Jugar con dinero real: solo modo demo.
-- Subir credenciales al repo.
+- Jugar con dinero real: solo Real Play con las cuentas de prueba que da Betsson.
+- Dejar credenciales en el repo, las capturas, los vídeos o los informes.
 - Saltarse CAPTCHAs o protecciones anti-bot.
